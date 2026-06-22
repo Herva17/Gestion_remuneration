@@ -15,6 +15,7 @@ class Utilisateur {
     const ROLE_ADMINISTRATEUR = 'Administrateur';
     const ROLE_COMPTABLE = 'Comptable';
     const ROLE_SECRETAIRE = 'Secretaire';
+    const ROLE_CAISSIER = 'Caissier'; // ✅ AJOUTÉ
 
     public function __construct(
         $nom = null,
@@ -80,7 +81,13 @@ class Utilisateur {
     }
 
     public function setRole($role) {
-        $valid_roles = [self::ROLE_ADMINISTRATEUR, self::ROLE_COMPTABLE, self::ROLE_SECRETAIRE];
+        // ✅ AJOUT DE CAISSIER DANS LES RÔLES VALIDES
+        $valid_roles = [
+            self::ROLE_ADMINISTRATEUR, 
+            self::ROLE_COMPTABLE, 
+            self::ROLE_SECRETAIRE,
+            self::ROLE_CAISSIER
+        ];
         if (in_array($role, $valid_roles)) {
             $this->role = $role;
         } else {
@@ -105,6 +112,11 @@ class Utilisateur {
 
     public function estSecretaire() {
         return $this->role === self::ROLE_SECRETAIRE;
+    }
+
+    // ✅ AJOUT DE LA MÉTHODE estCaissier()
+    public function estCaissier() {
+        return $this->role === self::ROLE_CAISSIER;
     }
 
     public function verifierMotDePasse($mot_de_passe) {
@@ -139,7 +151,7 @@ class Utilisateur {
             }
             return false;
         } catch (PDOException $e) {
-            echo "Erreur lors de l'insertion : " . $e->getMessage();
+            error_log("Erreur lors de l'insertion : " . $e->getMessage());
             return false;
         }
     }
@@ -176,7 +188,7 @@ class Utilisateur {
 
             return $stmt->execute();
         } catch (PDOException $e) {
-            echo "Erreur lors de la mise à jour : " . $e->getMessage();
+            error_log("Erreur lors de la mise à jour : " . $e->getMessage());
             return false;
         }
     }
@@ -193,7 +205,7 @@ class Utilisateur {
             $stmt->bindParam(':id', $this->id);
             return $stmt->execute();
         } catch (PDOException $e) {
-            echo "Erreur lors de la suppression : " . $e->getMessage();
+            error_log("Erreur lors de la suppression : " . $e->getMessage());
             return false;
         }
     }
@@ -221,7 +233,7 @@ class Utilisateur {
             }
             return null;
         } catch (PDOException $e) {
-            echo "Erreur lors de la récupération : " . $e->getMessage();
+            error_log("Erreur lors de la récupération : " . $e->getMessage());
             return null;
         }
     }
@@ -248,7 +260,7 @@ class Utilisateur {
             }
             return null;
         } catch (PDOException $e) {
-            echo "Erreur lors de la récupération : " . $e->getMessage();
+            error_log("Erreur lors de la récupération : " . $e->getMessage());
             return null;
         }
     }
@@ -298,7 +310,7 @@ class Utilisateur {
             }
             return $users;
         } catch (PDOException $e) {
-            echo "Erreur lors de la récupération : " . $e->getMessage();
+            error_log("Erreur lors de la récupération : " . $e->getMessage());
             return [];
         }
     }
@@ -325,7 +337,7 @@ class Utilisateur {
             }
             return $users;
         } catch (PDOException $e) {
-            echo "Erreur lors de la récupération : " . $e->getMessage();
+            error_log("Erreur lors de la récupération : " . $e->getMessage());
             return [];
         }
     }
@@ -348,7 +360,7 @@ class Utilisateur {
             $stmt->execute();
             return $stmt->fetchColumn() > 0;
         } catch (PDOException $e) {
-            echo "Erreur lors de la vérification : " . $e->getMessage();
+            error_log("Erreur lors de la vérification : " . $e->getMessage());
             return false;
         }
     }
@@ -361,7 +373,7 @@ class Utilisateur {
             $stmt = $db->query($sql);
             return $stmt->fetchColumn();
         } catch (PDOException $e) {
-            echo "Erreur lors du comptage : " . $e->getMessage();
+            error_log("Erreur lors du comptage : " . $e->getMessage());
             return 0;
         }
     }

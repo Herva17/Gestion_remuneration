@@ -7,8 +7,8 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-if (!in_array($_SESSION['user_role'], ['Administrateur', 'administrateur', 'Comptable', 'Secretaire', 'caissier'])) {
-    $_SESSION['message'] = "Accès réservé au service Paiements";
+if ($_SESSION['user_role'] !== 'Administrateur' && $_SESSION['user_role'] !== 'Caissier') {
+    $_SESSION['message'] = "Accès réservé aux administrateurs et caissiers";
     $_SESSION['message_type'] = 'error';
     header('Location: ../../Dashboard.php');
     exit;
@@ -19,6 +19,7 @@ require_once __DIR__ . '/../../Classes/remuneration.php';
 require_once __DIR__ . '/../../Classes/Agent.php';
 require_once __DIR__ . '/../../Classes/avantages.php';
 require_once __DIR__ . '/../../Classes/Retenue.php';
+require_once __DIR__ . '/../../Classes/Avance.php';
 require_once __DIR__ . '/../../Classes/annee_scolaire.php';
 
 // Vérifier si l'ID est passé en paramètre
@@ -83,10 +84,40 @@ foreach ($allRetenues as $rt) {
     }
 }
 
-// Calculs
+// ============================================================
+//  GESTION DES AVANCES
+// ============================================================
+
+// Récupérer TOUTES les avances en cours de l'agent (quel que soit le mois)
+$avances = Avance::getAvancesEnCours($remuneration->getIdAgent());
+$totalAvances = 0;
+foreach ($avances as $av) {
+    $totalAvances += $av->getMontant();
+}
+$nbAvances = count($avances);
+
+// Récupérer toutes les avances pour les statistiques
+$toutesAvances = Avance::getByAgent($remuneration->getIdAgent());
+$totalAvancesRemboursees = 0;
+foreach ($toutesAvances as $av) {
+    if ($av->isRembourse()) {
+        $totalAvancesRemboursees += $av->getMontant();
+    }
+}
+
+// ============================================================
+//  CALCULS
+// ============================================================
+
 $salaireBase = $remuneration->getMontant();
 $salaireBrut = $salaireBase + $totalAvantages;
 $salaireNet = $salaireBrut - $totalRetenues;
+$salaireNetApresAvances = $salaireNet - $totalAvances;
+
+// Si le salaire net après avances est négatif, on le met à 0
+if ($salaireNetApresAvances < 0) {
+    $salaireNetApresAvances = 0;
+}
 
 // Génération d'un numéro de reçu unique
 $numeroRecu = 'REC-' . date('Ymd') . '-' . str_pad($remuneration->getId(), 6, '0', STR_PAD_LEFT);
@@ -102,6 +133,77 @@ if (file_exists(__DIR__ . '/../../Classes/User.php')) {
 
 $role = $_SESSION['user_role'] ?? 'Invité';
 $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
+
+// Mois en lettres
+$moisNoms = [
+    '01' => 'Janvier', '02' => 'Février', '03' => 'Mars', '04' => 'Avril',
+    '05' => 'Mai', '06' => 'Juin', '07' => 'Juillet', '08' => 'Août',
+    '09' => 'Septembre', '10' => 'Octobre', '11' => 'Novembre', '12' => 'Décembre'
+];
+$moisLibelle = isset($moisNoms[$remuneration->getMois()]) ? $moisNoms[$remuneration->getMois()] : $remuneration->getMois();
+
+// Nombre en lettres pour le montant
+function nombreEnLettres($nombre) {
+    $unites = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
+    $dizaines = ['', 'dix', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante-dix', 'quatre-vingt', 'quatre-vingt-dix'];
+    
+    $nombre = round($nombre, 2);
+    $partieEntiere = floor($nombre);
+    $partieDecimale = round(($nombre - $partieEntiere) * 100);
+    
+    if ($partieEntiere == 0) {
+        $texte = 'zéro';
+    } else {
+        $texte = '';
+        if ($partieEntiere >= 1000000) {
+            $millions = floor($partieEntiere / 1000000);
+            $partieEntiere = $partieEntiere % 1000000;
+            $texte .= nombreEnLettres($millions) . ' million' . ($millions > 1 ? 's' : '') . ' ';
+        }
+        if ($partieEntiere >= 1000) {
+            $milliers = floor($partieEntiere / 1000);
+            $partieEntiere = $partieEntiere % 1000;
+            if ($milliers == 1) {
+                $texte .= 'mille ';
+            } else {
+                $texte .= nombreEnLettres($milliers) . ' mille ';
+            }
+        }
+        if ($partieEntiere >= 100) {
+            $centaines = floor($partieEntiere / 100);
+            $partieEntiere = $partieEntiere % 100;
+            if ($centaines == 1) {
+                $texte .= 'cent ';
+            } else {
+                $texte .= $unites[$centaines] . ' cent ';
+            }
+        }
+        if ($partieEntiere > 0) {
+            if ($partieEntiere < 20) {
+                $texte .= $unites[$partieEntiere];
+            } else {
+                $dizaine = floor($partieEntiere / 10);
+                $unite = $partieEntiere % 10;
+                if ($unite == 0) {
+                    $texte .= $dizaines[$dizaine];
+                } elseif ($dizaine == 7 || $dizaine == 9) {
+                    $texte .= $dizaines[$dizaine] . '-' . $unites[10 + $unite];
+                } else {
+                    $texte .= $dizaines[$dizaine] . '-' . $unites[$unite];
+                }
+            }
+        }
+    }
+    
+    $texte .= ' dollar' . ($partieEntiere > 1 ? 's' : '');
+    if ($partieDecimale > 0) {
+        $texte .= ' et ' . $partieDecimale . ' centime' . ($partieDecimale > 1 ? 's' : '');
+    }
+    
+    return ucfirst($texte);
+}
+
+$montantEnLettres = nombreEnLettres($salaireNetApresAvances);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -153,9 +255,9 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
             font-size: 13px;
             font-weight: 600;
         }
-        .badge-statut.actif { background: #dcfce7; color: #166534; }
-        .badge-statut.inactif { background: #fee2e2; color: #991b1b; }
-        .badge-statut.en-attente { background: #fef3c7; color: #92400e; }
+        .badge-statut.paye { background: #dcfce7; color: #166534; }
+        .badge-statut.en_attente { background: #fef3c7; color: #92400e; }
+        .badge-statut.annule { background: #fee2e2; color: #991b1b; }
 
         .info-entreprise {
             background: #f8fafc;
@@ -264,6 +366,7 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
         .badge-yellow { background: #fef3c7; color: #92400e; }
         .badge-red { background: #fee2e2; color: #991b1b; }
         .badge-purple { background: #f3e8ff; color: #6d28d9; }
+        .badge-orange { background: #ffedd5; color: #9a3412; }
 
         .montant-table {
             width: 100%;
@@ -289,6 +392,18 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
         }
         .montant-table .positive { color: #16a34a; }
         .montant-table .negative { color: #dc2626; }
+        .montant-table .avance-color { color: #f97316; }
+
+        .section-avances {
+            background: #fffbeb;
+            border-radius: 8px;
+            padding: 16px 20px;
+            border: 1px solid #fcd34d;
+            margin-top: 16px;
+        }
+        .section-avances .section-title i {
+            color: #f97316;
+        }
 
         .signature {
             margin-top: 30px;
@@ -356,14 +471,40 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
             font-style: italic;
         }
 
-        .debug-info {
-            background: #fef3c7;
-            border: 1px solid #fde68a;
-            border-radius: 8px;
-            padding: 12px 16px;
-            margin-bottom: 16px;
-            font-size: 13px;
-            color: #92400e;
+        .recap-avances {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .recap-avances .item {
+            background: #f8fafc;
+            padding: 8px 12px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+        .recap-avances .item .montant {
+            font-weight: 700;
+            font-size: 16px;
+        }
+        .recap-avances .item .label {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        .text-orange { color: #f97316; }
+        .text-green { color: #16a34a; }
+
+        .montant-lettres {
+            background: #f8fafc;
+            padding: 10px 16px;
+            border-radius: 6px;
+            margin: 12px 0;
+            border: 1px dashed #94a3b8;
+            font-size: 14px;
+            font-style: italic;
+            color: #1e293b;
+            text-align: center;
         }
 
         @media (max-width: 768px) {
@@ -373,6 +514,7 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
             .montant-principal { flex-direction: column; text-align: center; }
             .montant-principal .amount { font-size: 26px; }
             .signature { grid-template-columns: 1fr; gap: 10px; }
+            .recap-avances { grid-template-columns: 1fr 1fr; }
         }
         @media print {
             body { background: white; padding: 0; }
@@ -381,7 +523,6 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
             .header-recu { border-bottom-color: #000; }
             .montant-principal { background: #000; }
             .no-print { display: none; }
-            .debug-info { display: none; }
         }
     </style>
 </head>
@@ -394,13 +535,13 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
     <div class="header-recu">
         <div>
             <div class="title"><i class="fas fa-receipt"></i> REÇU DE PAIEMENT</div>
-            <div class="subtitle">Bulletin de salaire - <?php echo $remuneration->getMois() . ' ' . $remuneration->getAnnee(); ?></div>
+            <div class="subtitle">Bulletin de salaire - <?php echo $moisLibelle . ' ' . $remuneration->getAnnee(); ?></div>
         </div>
         <div style="text-align:right;">
             <div style="font-weight:600;color:#0f172a;">N° <?php echo htmlspecialchars($numeroRecu); ?></div>
             <div style="font-size:12px;color:#94a3b8;">Émis le <?php echo date('d/m/Y à H:i'); ?></div>
-            <span class="badge-statut <?php echo strtolower(str_replace(' ', '-', $remuneration->getStatut() ?? 'actif')); ?>">
-                <?php echo method_exists($remuneration, 'getStatutLibelle') ? $remuneration->getStatutLibelle() : 'Actif'; ?>
+            <span class="badge-statut paye">
+                <i class="fas fa-check-circle"></i> Payé
             </span>
         </div>
     </div>
@@ -418,12 +559,23 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
     <!-- Montant Principal -->
     <div class="montant-principal">
         <div>
-            <div class="label"><i class="fas fa-money-bill-wave"></i> Salaire net</div>
-            <div style="font-size:13px;opacity:0.8;">Période : <?php echo $remuneration->getMois() . ' ' . $remuneration->getAnnee(); ?></div>
+            <div class="label"><i class="fas fa-money-bill-wave"></i> Salaire net à payer</div>
+            <div style="font-size:13px;opacity:0.8;">Période : <?php echo $moisLibelle . ' ' . $remuneration->getAnnee(); ?></div>
+            <?php if ($nbAvances > 0): ?>
+                <div style="font-size:12px;opacity:0.7;margin-top:4px;">
+                    <i class="fas fa-hand-holding-usd"></i> Avances déduites : <?php echo number_format($totalAvances, 2, ',', ' '); ?> $
+                </div>
+            <?php endif; ?>
         </div>
         <div class="amount">
-            <?php echo number_format($salaireNet, 2, ',', ' '); ?> <span style="font-size:18px;">USD</span>
+            <?php echo number_format($salaireNetApresAvances, 2, ',', ' '); ?> <span style="font-size:18px;">USD</span>
         </div>
+    </div>
+
+    <!-- Montant en lettres -->
+    <div class="montant-lettres">
+        <i class="fas fa-pen" style="color:#2563eb;"></i>
+        <strong>Arrêté à la somme de :</strong> <?php echo $montantEnLettres; ?>
     </div>
 
     <!-- Informations détaillées -->
@@ -442,18 +594,39 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
                 <span class="label">Total avantages (<?php echo count($avantages); ?>)</span>
                 <span class="value" style="color:#16a34a;">+ <?php echo number_format($totalAvantages, 2, ',', ' '); ?> $</span>
             </div>
-            <div class="info-row">
-                <span class="label">Salaire brut</span>
-                <span class="value" style="color:#2563eb;"><?php echo number_format($salaireBrut, 2, ',', ' '); ?> $</span>
+            <div class="info-row" style="border-bottom:2px solid #2563eb;">
+                <span class="label" style="font-weight:700;color:#2563eb;">Salaire brut</span>
+                <span class="value" style="font-weight:700;color:#2563eb;"><?php echo number_format($salaireBrut, 2, ',', ' '); ?> $</span>
             </div>
-            <div class="info-row">
+            <div class="info-row" style="padding-top:8px;">
                 <span class="label">Total retenues (<?php echo count($retenues); ?>)</span>
                 <span class="value" style="color:#dc2626;">- <?php echo number_format($totalRetenues, 2, ',', ' '); ?> $</span>
             </div>
-            <div class="info-row" style="border-bottom: none; font-weight:700; font-size:15px;">
-                <span class="label" style="color:#0f172a;">Salaire net</span>
-                <span class="value" style="color:#16a34a;"><?php echo number_format($salaireNet, 2, ',', ' '); ?> $</span>
+            <div class="info-row" style="border-bottom:2px solid #16a34a;">
+                <span class="label" style="font-weight:700;color:#16a34a;">Salaire net</span>
+                <span class="value" style="font-weight:700;color:#16a34a;"><?php echo number_format($salaireNet, 2, ',', ' '); ?> $</span>
             </div>
+            <?php if ($nbAvances > 0): ?>
+            <div class="info-row" style="background:#fffbeb;padding:8px 12px;border-radius:6px;margin-top:4px;">
+                <span class="label" style="font-weight:700;color:#f97316;">
+                    <i class="fas fa-hand-holding-usd" style="color:#f97316;"></i> Avances (<?php echo $nbAvances; ?>)
+                </span>
+                <span class="value" style="font-weight:700;color:#f97316;">- <?php echo number_format($totalAvances, 2, ',', ' '); ?> $</span>
+            </div>
+            <?php endif; ?>
+            <div class="info-row" style="border-top:3px solid #2563eb;padding-top:10px;margin-top:4px;background:linear-gradient(135deg, #2563eb, #1d4ed8);border-radius:6px;padding:10px 14px;">
+                <span class="label" style="font-weight:700;color:white;font-size:16px;">
+                    <i class="fas fa-check-circle"></i> NET À PAYER
+                </span>
+                <span class="value" style="font-weight:700;color:white;font-size:18px;">
+                    <?php echo number_format($salaireNetApresAvances, 2, ',', ' '); ?> $
+                </span>
+            </div>
+            <?php if ($nbAvances > 0): ?>
+            <div style="font-size:11px;color:#94a3b8;margin-top:6px;text-align:center;">
+                <?php echo number_format($salaireNet, 2, ',', ' '); ?> $ - <?php echo number_format($totalAvances, 2, ',', ' '); ?> $ = <?php echo number_format($salaireNetApresAvances, 2, ',', ' '); ?> $
+            </div>
+            <?php endif; ?>
         </div>
 
         <div class="section">
@@ -476,7 +649,7 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
             <?php endif; ?>
             <div class="info-row">
                 <span class="label">Période</span>
-                <span class="value"><?php echo $remuneration->getMois() . ' ' . $remuneration->getAnnee(); ?></span>
+                <span class="value"><?php echo $moisLibelle . ' ' . $remuneration->getAnnee(); ?></span>
             </div>
             <div class="info-row">
                 <span class="label">Année scolaire</span>
@@ -552,6 +725,69 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
         </div>
     </div>
 
+    <!-- Section Avances détaillée -->
+    <div class="section-avances">
+        <div class="section-title">
+            <span><i class="fas fa-hand-holding-usd" style="color:#f97316;"></i> Avances sur Salaire</span>
+            <span class="count" style="background:#fef3c7;color:#92400e;"><?php echo $nbAvances; ?></span>
+        </div>
+        
+        <?php if ($nbAvances == 0): ?>
+            <div class="empty-data" style="color:#16a34a;">
+                <i class="fas fa-check-circle"></i> Aucune avance en cours
+            </div>
+        <?php else: ?>
+            <!-- Résumé des avances -->
+            <div class="recap-avances">
+                <div class="item">
+                    <div class="montant text-orange"><?php echo number_format($totalAvances, 2, ',', ' '); ?> $</div>
+                    <div class="label">Total avances en cours</div>
+                </div>
+                <div class="item">
+                    <div class="montant text-orange"><?php echo number_format($totalAvances, 2, ',', ' '); ?> $</div>
+                    <div class="label">Montant déduit</div>
+                </div>
+                <div class="item">
+                    <div class="montant text-green"><?php echo number_format($totalAvancesRemboursees, 2, ',', ' '); ?> $</div>
+                    <div class="label">Déjà remboursées</div>
+                </div>
+            </div>
+
+            <!-- Liste des avances -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:10px;">
+                <?php foreach ($avances as $avance): ?>
+                <div style="background:white;padding:10px 14px;border-radius:6px;border:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <div style="font-weight:600;color:#0f172a;font-size:13px;"><?php echo htmlspecialchars($avance->getLibelle()); ?></div>
+                        <div style="font-size:10px;color:#94a3b8;">
+                            <span class="badge badge-yellow">En cours</span>
+                            <span><?php echo $avance->getMois(); ?>/<?php echo $avance->getAnnee(); ?></span>
+                        </div>
+                    </div>
+                    <div style="font-weight:700;color:#f97316;font-size:14px;">
+                        <?php echo number_format($avance->getMontant(), 2, ',', ' '); ?> $
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- Total à déduire -->
+            <div style="border-top:2px solid #fcd34d;padding-top:10px;margin-top:10px;display:flex;justify-content:space-between;background:#fef3c7;padding:10px 16px;border-radius:6px;">
+                <span style="font-weight:700;color:#92400e;">
+                    <i class="fas fa-calculator"></i> Total des avances à déduire
+                </span>
+                <span style="font-weight:700;color:#f97316;font-size:18px;">
+                    <?php echo number_format($totalAvances, 2, ',', ' '); ?> $
+                </span>
+            </div>
+
+            <div style="background:#fef2f2;border-radius:6px;padding:8px 12px;margin-top:8px;color:#991b1b;font-weight:500;font-size:13px;border:1px solid #fca5a5;">
+                <i class="fas fa-exclamation-circle"></i>
+                Ces avances seront déduites du salaire net.
+            </div>
+        <?php endif; ?>
+    </div>
+
     <!-- Récapitulatif global -->
     <div style="background:#f8fafc;border-radius:8px;padding:16px 20px;margin-top:16px;border:1px solid #e2e8f0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">
         <div>
@@ -567,8 +803,12 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
             <div style="font-weight:700;color:#dc2626;">- <?php echo number_format($totalRetenues, 2, ',', ' '); ?> $</div>
         </div>
         <div>
-            <span style="font-size:12px;color:#94a3b8;">Salaire net</span>
-            <div style="font-weight:700;color:#2563eb;font-size:16px;"><?php echo number_format($salaireNet, 2, ',', ' '); ?> $</div>
+            <span style="font-size:12px;color:#94a3b8;">Total avances</span>
+            <div style="font-weight:700;color:#f97316;">- <?php echo number_format($totalAvances, 2, ',', ' '); ?> $</div>
+        </div>
+        <div style="grid-column:span 2;background:linear-gradient(135deg, #2563eb, #1d4ed8);border-radius:6px;padding:8px 14px;">
+            <span style="font-size:13px;color:rgba(255,255,255,0.8);">NET À PAYER</span>
+            <div style="font-weight:700;color:white;font-size:20px;"><?php echo number_format($salaireNetApresAvances, 2, ',', ' '); ?> $</div>
         </div>
     </div>
 

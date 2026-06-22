@@ -9,8 +9,9 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-if ($_SESSION['user_role'] !== 'Administrateur' && $_SESSION['user_role'] !== 'Comptable' && $_SESSION['user_role'] !== 'Secretaire') {
-    $_SESSION['message'] = "Accès réservé aux administrateurs, comptables et secrétaires";
+// Vérification des droits d'accès - Administrateur, Comptable, Secretaire ou Caissier
+if ($_SESSION['user_role'] !== 'Administrateur' && $_SESSION['user_role'] !== 'Comptable' && $_SESSION['user_role'] !== 'Secretaire' && $_SESSION['user_role'] !== 'Caissier') {
+    $_SESSION['message'] = "Accès réservé aux administrateurs, comptables, secrétaires et caissiers";
     $_SESSION['message_type'] = 'error';
     header('Location: ../../Dashboard.php');
     exit;
@@ -48,7 +49,20 @@ foreach ($retenues as $retenue) {
 // Mois et année actuelle
 $moisActuel = date('F');
 $anneeActuelle = date('Y');
-$totalMois = Retenue::getTotalByMonth($moisActuel, $anneeActuelle);
+
+// Calcul du total du mois
+$totalMois = 0;
+foreach ($retenues as $retenue) {
+    if ($retenue->getMois() === $moisActuel && $retenue->getAnnee() == $anneeActuelle) {
+        $totalMois += $retenue->getMontant();
+    }
+}
+
+// ========== DÉTERMINER LA PAGE DE RETOUR ==========
+$dashboardRetour = '../../Dashboard.php'; // Par défaut (administrateur)
+if (isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'caissier') {
+    $dashboardRetour = '../caissier/dashboard.php';
+}
 
 // Récupérer le type de retenue pour l'affichage
 function getTypeBadge($type) {
@@ -149,6 +163,8 @@ function getTypeIcon($type) {
         .btn-orange:hover { background: #ea580c; }
         .btn-purple { background: #a855f7; color: white; }
         .btn-purple:hover { background: #9333ea; }
+        .btn-secondary { background: #e5e7eb; color: #374151; }
+        .btn-secondary:hover { background: #d1d5db; }
 
         .alert { padding: 14px 20px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; font-weight: 500; }
         .alert-success { background: #dcfce7; border: 1px solid #86efac; color: #166534; }
@@ -195,15 +211,17 @@ function getTypeIcon($type) {
 
         .type-icon { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; margin-right: 6px; }
 
-        /* Style pour la colonne description */
-        .description-cell {
-            max-width: 200px;
-            word-wrap: break-word;
-            white-space: normal;
-        }
-        .description-cell .badge-gray {
-            cursor: pointer;
-        }
+        .description-cell { max-width: 200px; word-wrap: break-word; white-space: normal; }
+        .description-cell .badge-gray { cursor: pointer; }
+
+        .mb-3 { margin-bottom: 12px; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .gap-2 { gap: 8px; }
+        .gap-3 { gap: 12px; }
+        .gap-4 { gap: 16px; }
+        .flex-wrap { flex-wrap: wrap; }
+        .justify-between { justify-content: space-between; }
 
         @media (max-width: 768px) {
             .header { flex-direction: column; align-items: stretch; padding: 12px 16px; }
@@ -234,21 +252,39 @@ function getTypeIcon($type) {
 </head>
 <body>
 
+<!-- ===== HEADER ===== -->
 <div class="header">
     <div class="header-left">
         <h1><i class="fas fa-arrow-down" style="color:#dc2626;"></i> Gestion Retenues</h1>
         <nav class="nav-links">
-            <a href="../../Dashboard.php"><i class="fas fa-chart-line"></i> Dashboard</a>
-            <?php if ($role === 'Administrateur'): ?>
-            <a href="../../pages/utilisateurs/index.php"><i class="fas fa-user-lock"></i> Utilisateurs</a>
+            <?php if (strtolower($role) === 'administrateur'): ?>
+                <a href="../../Dashboard.php"><i class="fas fa-chart-line"></i> Dashboard</a>
+                <a href="../utilisateurs/index.php"><i class="fas fa-user-lock"></i> Utilisateurs</a>
+                <a href="../agents/index.php"><i class="fas fa-users"></i> Agents</a>
+                <a href="../services/index.php"><i class="fas fa-cogs"></i> Services</a>
+                <a href="../affectations/index.php"><i class="fas fa-tasks"></i> Affectations</a>
+                <a href="../remunerations/index.php"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
+                <a href="index.php" class="active"><i class="fas fa-arrow-down"></i> Retenues</a>
+                <a href="../avantages/index.php"><i class="fas fa-gift"></i> Avantages</a>
+                <a href="../avances/index.php"><i class="fas fa-hand-holding-usd"></i> Avances</a>
+                <a href="../avantages/AnneeScolaire.php"><i class="fas fa-calendar-alt"></i> Années</a>
+            <?php elseif (strtolower($role) === 'caissier'): ?>
+                <a href="../caissier/dashboard.php"><i class="fas fa-chart-line"></i> Dashboard</a>
+                <a href="../remunerations/index.php"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
+                <a href="index.php" class="active"><i class="fas fa-arrow-down"></i> Retenues</a>
+                <a href="../avantages/index.php"><i class="fas fa-gift"></i> Avantages</a>
+                <a href="../avances/index.php"><i class="fas fa-hand-holding-usd"></i> Avances</a>
+            <?php else: ?>
+                <!-- Autres rôles (Comptable, Secretaire) -->
+                <a href="../../Dashboard.php"><i class="fas fa-chart-line"></i> Dashboard</a>
+                <a href="../agents/index.php"><i class="fas fa-users"></i> Agents</a>
+                <a href="../services/index.php"><i class="fas fa-cogs"></i> Services</a>
+                <a href="../affectations/index.php"><i class="fas fa-tasks"></i> Affectations</a>
+                <a href="../remunerations/index.php"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
+                <a href="index.php" class="active"><i class="fas fa-arrow-down"></i> Retenues</a>
+                <a href="../avantages/index.php"><i class="fas fa-gift"></i> Avantages</a>
+                <a href="../avances/index.php"><i class="fas fa-hand-holding-usd"></i> Avances</a>
             <?php endif; ?>
-            <a href="../../pages/agents/index.php"><i class="fas fa-users"></i> Agents</a>
-            <a href="../../pages/services/index.php"><i class="fas fa-cogs"></i> Services</a>
-            <a href="../../pages/affectations/index.php"><i class="fas fa-tasks"></i> Affectations</a>
-            <a href="../../pages/remunerations/index.php"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
-            <a href="index.php" class="active"><i class="fas fa-arrow-down"></i> Retenues</a>
-            <a href="../../pages/avantages/index.php"><i class="fas fa-gift"></i> Avantages</a>
-            <a href="../../pages/avantages/AnneeScolaire.php"><i class="fas fa-calendar-alt"></i> Années</a>
         </nav>
     </div>
     <div class="header-right">
@@ -259,7 +295,24 @@ function getTypeIcon($type) {
     </div>
 </div>
 
+<!-- ===== CONTENU ===== -->
 <div class="container">
+
+    <!-- ===== BOUTON RETOUR ===== -->
+    <div class="mb-3">
+        <a href="<?php echo $dashboardRetour; ?>" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Retour au Dashboard
+        </a>
+        <?php if (strtolower($role) === 'caissier'): ?>
+            <span style="font-size:12px;color:#16a34a;margin-left:8px;">
+                <i class="fas fa-info-circle"></i> Retour vers le dashboard caissier
+            </span>
+        <?php else: ?>
+            <span style="font-size:12px;color:#2563eb;margin-left:8px;">
+                <i class="fas fa-info-circle"></i> Retour vers le dashboard principal
+            </span>
+        <?php endif; ?>
+    </div>
 
     <div class="top">
         <div>
@@ -362,13 +415,12 @@ function getTypeIcon($type) {
                             $colors = ['#dc2626', '#b91c1c', '#ef4444', '#f87171', '#fca5a5'];
                             $avatarColor = $colors[$index % count($colors)];
                             
-                            $typeClass = getTypeBadge($retenue->getTypeRetenue());
-                            $typeIcon = getTypeIcon($retenue->getTypeRetenue());
+                            $typeClass = getTypeBadge($retenue->getType());
+                            $typeIcon = getTypeIcon($retenue->getType());
                             
                             $statutClass = $retenue->getStatut() === 'actif' ? 'statut-actif' : ($retenue->getStatut() === 'en_attente' ? 'statut-en-attente' : 'statut-inactif');
                             $statutBadge = $retenue->getStatut() === 'actif' ? 'badge-green' : ($retenue->getStatut() === 'en_attente' ? 'badge-orange' : 'badge-gray');
                             
-                            // Tronquer la description si elle est trop longue
                             $description = $retenue->getDescription();
                             $descriptionDisplay = $description ? htmlspecialchars($description) : 'N/A';
                             if (strlen($descriptionDisplay) > 50) {

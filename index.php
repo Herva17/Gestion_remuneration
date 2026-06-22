@@ -14,14 +14,17 @@ if (isset($_GET['logout'])) {
 if (isset($_SESSION['user_id']) && isset($_SESSION['user_role'])) {
     $role = $_SESSION['user_role'];
     
-    if ($role === 'Secretaire') {
-        header('Location: pages/agents/index.php');
+    // Redirection selon le rôle (insensible à la casse)
+    if (strtolower($role) === 'caissier') {
+        header('Location: pages/caissier/dashboard.php');
         exit;
-    } elseif ($role === 'Comptable') {
-        header('Location: pages/remunerations/index.php');
-        exit;
-    } elseif ($role === 'Administrateur') {
+    } elseif (strtolower($role) === 'administrateur') {
         header('Location: Dashboard.php');
+        exit;
+    } else {
+        // Si le rôle n'est pas reconnu, déconnecter
+        session_destroy();
+        header('Location: index.php');
         exit;
     }
 }
@@ -45,18 +48,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['nom'] = $user->getNom();
             $_SESSION['email'] = $user->getEmail();
             $_SESSION['user_role'] = $user->getRole();
+            $_SESSION['login_time'] = time();
             
             $role = $user->getRole();
             
-            // Redirection selon le rôle
-            if ($role === 'Secretaire') {
-                header('Location: pages/agents/index.php');
+            // Redirection selon le rôle (insensible à la casse)
+            if (strtolower($role) === 'caissier') {
+                header('Location: pages/caissier/dashboard.php');
                 exit;
-            } elseif ($role === 'Comptable') {
-                header('Location: pages/remunerations/index.php');
+            } elseif (strtolower($role) === 'administrateur') {
+                header('Location: Dashboard.php');
                 exit;
             } else {
-                // Administrateur par défaut
+                // Par défaut, rediriger vers Dashboard
                 header('Location: Dashboard.php');
                 exit;
             }
@@ -74,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* Styles identiques à ceux précédemment... */
         body {
             background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);
             min-height: 100vh;
@@ -203,8 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin: 0 4px;
         }
         .badge-admin { background: rgba(220, 38, 38, 0.3); color: #fca5a5; }
-        .badge-comptable { background: rgba(34, 197, 94, 0.3); color: #86efac; }
-        .badge-secretaire { background: rgba(234, 179, 8, 0.3); color: #fcd34d; }
+        .badge-caissier { background: rgba(34, 197, 94, 0.3); color: #86efac; }
         .footer-link {
             text-align: center;
             margin-top: 16px;
@@ -217,11 +221,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .footer-link a:hover {
             color: rgba(255, 255, 255, 0.9);
-        }
-        .error-msg {
-            color: #fca5a5;
-            font-size: 12px;
-            margin-top: 4px;
         }
     </style>
 </head>
@@ -268,8 +267,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="roles-info">
         <p style="margin-bottom:6px;">Rôles disponibles :</p>
         <span class="badge badge-admin">Administrateur</span>
-        <span class="badge badge-comptable">Comptable</span>
-        <span class="badge badge-secretaire">Secrétaire</span>
+        <span class="badge badge-caissier">Caissier</span>
     </div>
 
     <div class="footer-link">

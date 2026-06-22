@@ -11,10 +11,9 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-// Vérification des droits d'accès
-$allowed_roles = ['Administrateur', 'Comptable', 'Secretaire'];
-if (!in_array($_SESSION['user_role'], $allowed_roles)) {
-    $_SESSION['message'] = "Accès réservé aux administrateurs, comptables et secrétaires";
+// Vérification des droits d'accès - Administrateur, Caissier
+if ($_SESSION['user_role'] !== 'Administrateur' && $_SESSION['user_role'] !== 'Caissier') {
+    $_SESSION['message'] = "Accès réservé aux administrateurs et caissiers";
     $_SESSION['message_type'] = 'error';
     header('Location: ../../Dashboard.php');
     exit;
@@ -52,7 +51,28 @@ $moyenne = $total_avantages > 0 ? $total_montant / $total_avantages : 0;
 // Année scolaire en cours
 $anneeCourante = AnneeScolaire::getCurrent();
 $anneeDesignation = $anneeCourante ? $anneeCourante->getDesignationAnn() : 'Non définie';
-$totalAnnee = $anneeCourante ? Avantage::getTotalByAnnee($anneeCourante->getId()) : 0;
+
+// Calcul du total de l'année
+$totalAnnee = 0;
+if ($anneeCourante) {
+    if (method_exists('Avantage', 'getTotalByAnnee')) {
+        $totalAnnee = Avantage::getTotalByAnnee($anneeCourante->getId());
+    } else {
+        foreach ($avantages as $av) {
+            if (method_exists($av, 'getIdAnnee') && $av->getIdAnnee() == $anneeCourante->getId()) {
+                $totalAnnee += $av->getMontant();
+            } elseif (method_exists($av, 'getAnnee') && $av->getAnnee() == date('Y')) {
+                $totalAnnee += $av->getMontant();
+            }
+        }
+    }
+}
+
+// ========== DÉTERMINER LA PAGE DE RETOUR ==========
+$dashboardRetour = '../../Dashboard.php'; // Par défaut (administrateur)
+if (isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'caissier') {
+    $dashboardRetour = '../caissier/dashboard.php';
+}
 
 // Fonction pour le badge de type
 function getTypeBadge($type) {
@@ -349,6 +369,13 @@ function getStatutBadge($statut) {
         .btn-purple:hover {
             background: #9333ea;
         }
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
 
         .alert {
             padding: 14px 20px;
@@ -548,12 +575,20 @@ function getStatutBadge($statut) {
             background: white;
         }
 
-        /* Style pour la colonne description */
         .description-cell {
             max-width: 200px;
             word-wrap: break-word;
             white-space: normal;
         }
+
+        .mb-3 { margin-bottom: 12px; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .gap-2 { gap: 8px; }
+        .gap-3 { gap: 12px; }
+        .gap-4 { gap: 16px; }
+        .flex-wrap { flex-wrap: wrap; }
+        .justify-between { justify-content: space-between; }
 
         @media (max-width: 768px) {
             .header {
@@ -642,21 +677,28 @@ function getStatutBadge($statut) {
 <body>
 
 <!-- ===== HEADER ===== -->
-<header class="header">
+<div class="header">
     <div class="header-left">
         <h1><i class="fas fa-gift" style="color:#eab308;"></i> Gestion Avantages</h1>
         <nav class="nav-links">
-            <a href="../../Dashboard.php"><i class="fas fa-chart-line"></i> Dashboard</a>
-            <?php if ($role === 'Administrateur'): ?>
-                <a href="../../pages/utilisateurs/index.php"><i class="fas fa-user-lock"></i> Utilisateurs</a>
+            <?php if (strtolower($role) === 'administrateur'): ?>
+                <a href="../../Dashboard.php"><i class="fas fa-chart-line"></i> Dashboard</a>
+                <a href="../utilisateurs/index.php"><i class="fas fa-user-lock"></i> Utilisateurs</a>
+                <a href="../agents/index.php"><i class="fas fa-users"></i> Agents</a>
+                <a href="../services/index.php"><i class="fas fa-cogs"></i> Services</a>
+                <a href="../affectations/index.php"><i class="fas fa-tasks"></i> Affectations</a>
+                <a href="../remunerations/index.php"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
+                <a href="../retenues/index.php"><i class="fas fa-arrow-down"></i> Retenues</a>
+                <a href="index.php" class="active"><i class="fas fa-gift"></i> Avantages</a>
+                <a href="../avances/index.php"><i class="fas fa-hand-holding-usd"></i> Avances</a>
+                <a href="AnneeScolaire.php"><i class="fas fa-calendar-alt"></i> Années</a>
+            <?php elseif (strtolower($role) === 'caissier'): ?>
+                <a href="../caissier/dashboard.php"><i class="fas fa-chart-line"></i> Dashboard</a>
+                <a href="../remunerations/index.php"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
+                <a href="../retenues/index.php"><i class="fas fa-arrow-down"></i> Retenues</a>
+                <a href="index.php" class="active"><i class="fas fa-gift"></i> Avantages</a>
+                <a href="../avances/index.php"><i class="fas fa-hand-holding-usd"></i> Avances</a>
             <?php endif; ?>
-            <a href="../../pages/agents/index.php"><i class="fas fa-users"></i> Agents</a>
-            <a href="../../pages/services/index.php"><i class="fas fa-cogs"></i> Services</a>
-            <a href="../../pages/affectations/index.php"><i class="fas fa-tasks"></i> Affectations</a>
-            <a href="../../pages/remunerations/index.php"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
-            <a href="../../pages/retenues/index.php"><i class="fas fa-arrow-down"></i> Retenues</a>
-            <a href="index.php" class="active"><i class="fas fa-gift"></i> Avantages</a>
-            <a href="../../avantages/AnneeScolaire.php"><i class="fas fa-calendar-alt"></i> Années</a>
         </nav>
     </div>
     <div class="header-right">
@@ -665,10 +707,26 @@ function getStatutBadge($statut) {
         <div class="avatar"><?php echo strtoupper(substr($username, 0, 1)); ?></div>
         <a href="../../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
     </div>
-</header>
+</div>
 
 <!-- ===== CONTENU PRINCIPAL ===== -->
 <main class="container">
+
+    <!-- ===== BOUTON RETOUR ===== -->
+    <div class="mb-3">
+        <a href="<?php echo $dashboardRetour; ?>" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Retour au Dashboard
+        </a>
+        <?php if (strtolower($role) === 'caissier'): ?>
+            <span style="font-size:12px;color:#16a34a;margin-left:8px;">
+                <i class="fas fa-info-circle"></i> Retour vers le dashboard caissier
+            </span>
+        <?php else: ?>
+            <span style="font-size:12px;color:#2563eb;margin-left:8px;">
+                <i class="fas fa-info-circle"></i> Retour vers le dashboard principal
+            </span>
+        <?php endif; ?>
+    </div>
 
     <div class="top-bar">
         <div>
@@ -683,23 +741,7 @@ function getStatutBadge($statut) {
     </div>
 
     <div class="export-bar">
-        <span class="label"><i class="fas fa-file-export"></i> États de sortie :</span>
-        <div class="btn-group">
-            <a href="report_annual.php?year=<?php echo date('Y'); ?>" target="_blank" class="btn btn-purple">
-                <i class="fas fa-calendar-alt"></i> Rapport annuel
-            </a>
-            <a href="fiche_periodique.php" class="btn btn-orange">
-                <i class="fas fa-calendar-week"></i> Fiche périodique
-            </a>
-            <a href="print.php" target="_blank" class="btn btn-primary">
-                <i class="fas fa-print"></i> Imprimer
-            </a>
-            <?php if ($role === 'Administrateur' || $role === 'Comptable'): ?>
-                <a href="export_csv.php" class="btn btn-success">
-                    <i class="fas fa-file-csv"></i> Exporter CSV
-                </a>
-            <?php endif; ?>
-        </div>
+        
     </div>
 
     <?php if ($message): ?>
@@ -759,7 +801,6 @@ function getStatutBadge($statut) {
                     <?php else: ?>
                         <?php foreach ($avantages as $index => $avantage): 
                             $agent = $avantage->getAgent();
-                            $annee = $avantage->getAnneeScolaire();
                             $nomAgent = $agent ? $agent->getNomComplet() : 'Agent inconnu';
                             $initials = '';
                             $parts = explode(' ', $nomAgent);
@@ -770,16 +811,9 @@ function getStatutBadge($statut) {
                             $colors = ['#eab308', '#22c55e', '#3b82f6', '#a855f7', '#ef4444', '#ec4899', '#14b8a6', '#f59e0b'];
                             $avatarColor = $colors[$index % count($colors)];
                             
-                            $typeClass = getTypeBadge($avantage->getTypeAvantage());
-                            $typeIcon = getTypeIcon($avantage->getTypeAvantage());
-                            
+                            $typeClass = getTypeBadge($avantage->getType());
+                            $typeIcon = getTypeIcon($avantage->getType());
                             $statutBadge = getStatutBadge($avantage->getStatut());
-                            
-                            $description = $avantage->getDescription();
-                            $descriptionDisplay = $description ? htmlspecialchars($description) : 'N/A';
-                            if (strlen($descriptionDisplay) > 50) {
-                                $descriptionDisplay = substr($descriptionDisplay, 0, 50) . '...';
-                            }
                         ?>
                             <tr>
                                 <td><span style="color:#94a3b8;font-weight:600;"><?php echo $avantage->getId(); ?></span></td>

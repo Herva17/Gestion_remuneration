@@ -162,22 +162,7 @@ $title = "Rapport annuel des rémunérations - $year";
 </head>
 <body>
 
-<div class="header no-print">
-    <div class="header-left">
-        <h1>💰 Gestion Rémunération</h1>
-        <div class="nav-links">
-            <a href="../../Dashboard.php"><i class="fas fa-chart-line"></i> Dashboard</a>
-            <a href="../index.php"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
-            <a href="index.php" class="active"><i class="fas fa-calendar-alt"></i> Rapport Annuel</a>
-        </div>
-    </div>
-    <div class="header-right">
-        <span class="role">Administrateur</span>
-        <span class="username">Bienvenue</span>
-        <div class="avatar"><i class="fas fa-user"></i></div>
-        <a href="../../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
-    </div>
-</div>
+
 
 <div class="container">
 

@@ -2,10 +2,10 @@
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Hôte : 127.0.0.1
--- Généré le : dim. 21 juin 2026 à 21:45
--- Version du serveur : 10.4.32-MariaDB
--- Version de PHP : 8.2.12
+-- Host: 127.0.0.1
+-- Generation Time: Jun 22, 2026 at 11:48 PM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,13 +18,13 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Base de données : `gestion_remuneration`
+-- Database: `gestion_remuneration`
 --
 
 -- --------------------------------------------------------
 
 --
--- Structure de la table `affectation`
+-- Table structure for table `affectation`
 --
 
 CREATE TABLE `affectation` (
@@ -36,16 +36,16 @@ CREATE TABLE `affectation` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Déchargement des données de la table `affectation`
+-- Dumping data for table `affectation`
 --
 
 INSERT INTO `affectation` (`id`, `id_agent`, `id_service`, `lieu_affectation`, `date_affectation`) VALUES
-(1, 1, 1, 'Direction', '2026-06-20');
+(2, 2, 2, 'Direction', '2026-06-22');
 
 -- --------------------------------------------------------
 
 --
--- Structure de la table `agent`
+-- Table structure for table `agent`
 --
 
 CREATE TABLE `agent` (
@@ -60,16 +60,17 @@ CREATE TABLE `agent` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Déchargement des données de la table `agent`
+-- Dumping data for table `agent`
 --
 
 INSERT INTO `agent` (`id_agent`, `nom_complet`, `adresse`, `date_naissance`, `telephone`, `profil`, `lieu_naissance`, `fonction`) VALUES
-(1, 'Aggée BUSIME MUHINDO', 'Katoyi', '2004-06-20', '0826487074', 'Enseignant', 'Goma', 'Enseignant');
+(1, 'Aggée BUSIME MUHINDO', 'Katoyi', '2004-06-20', '0826487074', 'Enseignant', 'Goma', 'Enseignant'),
+(2, 'HULDA', 'hjhsjhjshkjs', '2002-06-22', '0977404036', 'Enseignant', 'Goma', 'Enseignant');
 
 -- --------------------------------------------------------
 
 --
--- Structure de la table `annee_scolaire`
+-- Table structure for table `annee_scolaire`
 --
 
 CREATE TABLE `annee_scolaire` (
@@ -78,7 +79,7 @@ CREATE TABLE `annee_scolaire` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Déchargement des données de la table `annee_scolaire`
+-- Dumping data for table `annee_scolaire`
 --
 
 INSERT INTO `annee_scolaire` (`id`, `designation_ann`) VALUES
@@ -89,7 +90,32 @@ INSERT INTO `annee_scolaire` (`id`, `designation_ann`) VALUES
 -- --------------------------------------------------------
 
 --
--- Structure de la table `avantages`
+-- Table structure for table `avances`
+--
+
+CREATE TABLE `avances` (
+  `id` int(11) NOT NULL,
+  `agent_id` int(11) NOT NULL,
+  `mois` varchar(20) NOT NULL,
+  `annee` int(11) NOT NULL,
+  `libelle` varchar(100) NOT NULL,
+  `montant` decimal(10,2) NOT NULL,
+  `date_creation` datetime DEFAULT current_timestamp(),
+  `statut` enum('en_cours','rembourse') DEFAULT 'en_cours'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `avances`
+--
+
+INSERT INTO `avances` (`id`, `agent_id`, `mois`, `annee`, `libelle`, `montant`, `date_creation`, `statut`) VALUES
+(3, 2, '06', 2026, 'Achat fourniture', 20.00, '2026-06-22 22:26:32', 'rembourse'),
+(4, 2, '06', 2026, 'transport', 10.00, '2026-06-22 23:10:27', 'rembourse');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `avantages`
 --
 
 CREATE TABLE `avantages` (
@@ -112,16 +138,16 @@ CREATE TABLE `avantages` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Déchargement des données de la table `avantages`
+-- Dumping data for table `avantages`
 --
 
 INSERT INTO `avantages` (`id`, `id_agent`, `libelle`, `description`, `type_avantage`, `est_recurrent`, `date_debut`, `date_fin`, `id_annee`, `montant`, `date_avantage`, `mois`, `annee`, `statut`, `created_at`, `updated_at`) VALUES
-(2, 1, 'Prime transport', 'jkjslkjksjksjskjls', 'transport', 1, '2026-06-01', '2026-06-30', 2, 10.00, '2026-06-21', 'Juillet', '2026', 'actif', '2026-06-21 18:46:22', '2026-06-21 18:46:22');
+(5, 2, 'Prime Transport', 'GHGHJGHJGHGHJGHJ', 'transport', 1, NULL, NULL, 3, 30.00, '2026-06-22', 'Juin', '2026', 'actif', '2026-06-22 20:27:45', '2026-06-22 20:27:45');
 
 -- --------------------------------------------------------
 
 --
--- Structure de la table `remuneration`
+-- Table structure for table `remuneration`
 --
 
 CREATE TABLE `remuneration` (
@@ -134,16 +160,16 @@ CREATE TABLE `remuneration` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Déchargement des données de la table `remuneration`
+-- Dumping data for table `remuneration`
 --
 
 INSERT INTO `remuneration` (`id`, `id_agent`, `montant`, `date_remun`, `mois`, `annee`) VALUES
-(2, 1, 100.00, '2026-06-21', 'Janvier', '2026');
+(4, 2, 300.00, '2026-06-22', 'Juin', '2026');
 
 -- --------------------------------------------------------
 
 --
--- Structure de la table `retenue`
+-- Table structure for table `retenue`
 --
 
 CREATE TABLE `retenue` (
@@ -165,16 +191,16 @@ CREATE TABLE `retenue` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Déchargement des données de la table `retenue`
+-- Dumping data for table `retenue`
 --
 
 INSERT INTO `retenue` (`id`, `id_agent`, `libelle`, `description`, `type_retenue`, `est_recurrent`, `date_debut`, `date_fin`, `montant`, `date_retenue`, `mois`, `annee`, `statut`, `created_at`, `updated_at`) VALUES
-(2, 1, 'Assurance', 'Pour assurance', 'assurance', 1, '2026-06-01', '2026-06-30', 21.00, '2026-06-21', 'Mars', '2026', 'actif', '2026-06-21 18:26:30', '2026-06-21 18:27:13');
+(4, 2, 'Assurance sociale', 'ghghjkgjhgkdfggf', 'assurance', 1, NULL, NULL, 20.00, '2026-06-22', 'Juin', '2026', 'actif', '2026-06-22 20:28:42', '2026-06-22 20:28:42');
 
 -- --------------------------------------------------------
 
 --
--- Structure de la table `service`
+-- Table structure for table `service`
 --
 
 CREATE TABLE `service` (
@@ -184,16 +210,18 @@ CREATE TABLE `service` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Déchargement des données de la table `service`
+-- Dumping data for table `service`
 --
 
 INSERT INTO `service` (`id`, `designation`, `description`) VALUES
-(1, 'Comptabilite', 'Comptable');
+(2, 'Enseignement', ''),
+(3, 'Administration', ''),
+(4, 'Direction', '');
 
 -- --------------------------------------------------------
 
 --
--- Structure de la table `utilisateur`
+-- Table structure for table `utilisateur`
 --
 
 CREATE TABLE `utilisateur` (
@@ -201,23 +229,24 @@ CREATE TABLE `utilisateur` (
   `nom` varchar(100) DEFAULT NULL,
   `email` varchar(100) DEFAULT NULL,
   `mot_de_passe` varchar(255) DEFAULT NULL,
-  `role` enum('Administrateur','Comptable','Secretaire') NOT NULL,
+  `role` varchar(255) NOT NULL,
   `date_creation` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Déchargement des données de la table `utilisateur`
+-- Dumping data for table `utilisateur`
 --
 
 INSERT INTO `utilisateur` (`id`, `nom`, `email`, `mot_de_passe`, `role`, `date_creation`) VALUES
-(1, 'SALEH', 'saleh@gmail.com', '$2y$10$Ov0pHQSn/oMLPv5GHjxfTeF5RwWEXih9jOQsz.lS.rRnM5aHNySIe', 'Administrateur', '2026-06-20 20:16:52');
+(1, 'SALEH', 'saleh@gmail.com', '$2y$10$Ov0pHQSn/oMLPv5GHjxfTeF5RwWEXih9jOQsz.lS.rRnM5aHNySIe', 'Administrateur', '2026-06-20 20:16:52'),
+(2, 'CAISSIER', 'caissier@gmail.com', '$2y$10$uXWS0tAwoFvBjGejuniKAurffDufkDJ6xdqvSo.8/HgTt1qJbT8c2', 'Caissier', '2026-06-22 10:03:20');
 
 --
--- Index pour les tables déchargées
+-- Indexes for dumped tables
 --
 
 --
--- Index pour la table `affectation`
+-- Indexes for table `affectation`
 --
 ALTER TABLE `affectation`
   ADD PRIMARY KEY (`id`),
@@ -225,19 +254,26 @@ ALTER TABLE `affectation`
   ADD KEY `id_service` (`id_service`);
 
 --
--- Index pour la table `agent`
+-- Indexes for table `agent`
 --
 ALTER TABLE `agent`
   ADD PRIMARY KEY (`id_agent`);
 
 --
--- Index pour la table `annee_scolaire`
+-- Indexes for table `annee_scolaire`
 --
 ALTER TABLE `annee_scolaire`
   ADD PRIMARY KEY (`id`);
 
 --
--- Index pour la table `avantages`
+-- Indexes for table `avances`
+--
+ALTER TABLE `avances`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `agent_id` (`agent_id`);
+
+--
+-- Indexes for table `avantages`
 --
 ALTER TABLE `avantages`
   ADD PRIMARY KEY (`id`),
@@ -248,110 +284,122 @@ ALTER TABLE `avantages`
   ADD KEY `idx_mois_annee` (`mois`,`annee`);
 
 --
--- Index pour la table `remuneration`
+-- Indexes for table `remuneration`
 --
 ALTER TABLE `remuneration`
   ADD PRIMARY KEY (`id`),
   ADD KEY `id_agent` (`id_agent`);
 
 --
--- Index pour la table `retenue`
+-- Indexes for table `retenue`
 --
 ALTER TABLE `retenue`
   ADD PRIMARY KEY (`id`),
   ADD KEY `id_agent` (`id_agent`);
 
 --
--- Index pour la table `service`
+-- Indexes for table `service`
 --
 ALTER TABLE `service`
   ADD PRIMARY KEY (`id`);
 
 --
--- Index pour la table `utilisateur`
+-- Indexes for table `utilisateur`
 --
 ALTER TABLE `utilisateur`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `email` (`email`);
 
 --
--- AUTO_INCREMENT pour les tables déchargées
+-- AUTO_INCREMENT for dumped tables
 --
 
 --
--- AUTO_INCREMENT pour la table `affectation`
+-- AUTO_INCREMENT for table `affectation`
 --
 ALTER TABLE `affectation`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
--- AUTO_INCREMENT pour la table `agent`
+-- AUTO_INCREMENT for table `agent`
 --
 ALTER TABLE `agent`
-  MODIFY `id_agent` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id_agent` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
--- AUTO_INCREMENT pour la table `annee_scolaire`
+-- AUTO_INCREMENT for table `annee_scolaire`
 --
 ALTER TABLE `annee_scolaire`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
--- AUTO_INCREMENT pour la table `avantages`
+-- AUTO_INCREMENT for table `avances`
+--
+ALTER TABLE `avances`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `avantages`
 --
 ALTER TABLE `avantages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
--- AUTO_INCREMENT pour la table `remuneration`
+-- AUTO_INCREMENT for table `remuneration`
 --
 ALTER TABLE `remuneration`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
--- AUTO_INCREMENT pour la table `retenue`
+-- AUTO_INCREMENT for table `retenue`
 --
 ALTER TABLE `retenue`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `service`
+--
+ALTER TABLE `service`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `utilisateur`
+--
+ALTER TABLE `utilisateur`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
--- AUTO_INCREMENT pour la table `service`
---
-ALTER TABLE `service`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
--- AUTO_INCREMENT pour la table `utilisateur`
---
-ALTER TABLE `utilisateur`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
--- Contraintes pour les tables déchargées
+-- Constraints for dumped tables
 --
 
 --
--- Contraintes pour la table `affectation`
+-- Constraints for table `affectation`
 --
 ALTER TABLE `affectation`
   ADD CONSTRAINT `affectation_ibfk_1` FOREIGN KEY (`id_agent`) REFERENCES `agent` (`id_agent`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `affectation_ibfk_2` FOREIGN KEY (`id_service`) REFERENCES `service` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Contraintes pour la table `avantages`
+-- Constraints for table `avances`
+--
+ALTER TABLE `avances`
+  ADD CONSTRAINT `avances_ibfk_1` FOREIGN KEY (`agent_id`) REFERENCES `agent` (`id_agent`);
+
+--
+-- Constraints for table `avantages`
 --
 ALTER TABLE `avantages`
   ADD CONSTRAINT `avantages_ibfk_1` FOREIGN KEY (`id_agent`) REFERENCES `agent` (`id_agent`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `avantages_ibfk_2` FOREIGN KEY (`id_annee`) REFERENCES `annee_scolaire` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Contraintes pour la table `remuneration`
+-- Constraints for table `remuneration`
 --
 ALTER TABLE `remuneration`
   ADD CONSTRAINT `remuneration_ibfk_1` FOREIGN KEY (`id_agent`) REFERENCES `agent` (`id_agent`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Contraintes pour la table `retenue`
+-- Constraints for table `retenue`
 --
 ALTER TABLE `retenue`
   ADD CONSTRAINT `retenue_ibfk_1` FOREIGN KEY (`id_agent`) REFERENCES `agent` (`id_agent`) ON DELETE CASCADE ON UPDATE CASCADE;

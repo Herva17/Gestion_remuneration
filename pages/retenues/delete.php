@@ -1,37 +1,48 @@
 <?php
 session_start();
 require_once __DIR__ . '/../../Config/Database.php';
+require_once __DIR__ . '/../../Classes/Retenue.php';
+
+// Vérification de la session
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../../index.php');
     exit;
 }
-if ($_SESSION['user_role'] !== 'administrateur') {
-    $_SESSION['message'] = "Accès réservé aux administrateurs";
+
+// Vérification des droits (Administrateur ou Caissier)
+if ($_SESSION['user_role'] !== 'Administrateur' && $_SESSION['user_role'] !== 'Caissier') {
+    $_SESSION['message'] = "Accès réservé aux administrateurs et caissiers";
     $_SESSION['message_type'] = 'error';
     header('Location: ../paiements/index.php');
     exit;
 }
-require_once __DIR__ . '/../../Classes/Prestation.php';
 
-if (!isset($_GET['id'])) {
-    header('Location: index.php');
-    exit;
-}
-
-$prestation = Prestation::getById($_GET['id']);
-
-if (!$prestation) {
-    $_SESSION['message'] = "Prestation non trouvée";
+// Vérification de l'ID
+if (!isset($_GET['id']) || empty($_GET['id'])) {
+    $_SESSION['message'] = "ID de retenue manquant";
     $_SESSION['message_type'] = 'error';
     header('Location: index.php');
     exit;
 }
 
-if ($prestation->delete()) {
-    $_SESSION['message'] = "Prestation supprimée avec succès";
+$id = intval($_GET['id']);
+
+// Récupération de la retenue
+$retenue = Retenue::getById($id);
+
+if (!$retenue) {
+    $_SESSION['message'] = "Retenue non trouvée";
+    $_SESSION['message_type'] = 'error';
+    header('Location: index.php');
+    exit;
+}
+
+// Suppression de la retenue
+if ($retenue->delete()) {
+    $_SESSION['message'] = "Retenue supprimée avec succès";
     $_SESSION['message_type'] = 'success';
 } else {
-    $_SESSION['message'] = "Erreur lors de la suppression";
+    $_SESSION['message'] = "Erreur lors de la suppression de la retenue";
     $_SESSION['message_type'] = 'error';
 }
 

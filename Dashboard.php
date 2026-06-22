@@ -59,8 +59,40 @@ $salaireNetTotal = $totalMontantRemunerations - $totalMontantRetenues;
 $moisCourant = date('F');
 $anneeCourante = date('Y');
 
-$totalRemunerationsMois = Remuneration::getTotalByMonth($moisCourant, $anneeCourante);
-$totalRetenuesMois = Retenue::getTotalByMonth($moisCourant, $anneeCourante);
+// ========== CORRECTION : Utilisation des bonnes méthodes ==========
+
+// Récupérer les totaux du mois via la classe Dashboard ou directement
+// Option 1: Utiliser la classe Dashboard si elle a les méthodes
+if (method_exists($dashboard, 'getTotalRemunerationsByMonth')) {
+    $totalRemunerationsMois = $dashboard->getTotalRemunerationsByMonth($moisCourant, $anneeCourante);
+    $totalRetenuesMois = $dashboard->getTotalRetenuesByMonth($moisCourant, $anneeCourante);
+} else {
+    // Option 2: Utiliser les méthodes statiques si elles existent
+    if (method_exists('Remuneration', 'getTotalByMonth')) {
+        $totalRemunerationsMois = Remuneration::getTotalByMonth($moisCourant, $anneeCourante);
+    } else {
+        // Option 3: Calcul manuel
+        $totalRemunerationsMois = 0;
+        foreach ($remunerations as $remuneration) {
+            if ($remuneration->getMois() === $moisCourant && $remuneration->getAnnee() == $anneeCourante) {
+                $totalRemunerationsMois += $remuneration->getMontant();
+            }
+        }
+    }
+    
+    if (method_exists('Retenue', 'getTotalByMonth')) {
+        $totalRetenuesMois = Retenue::getTotalByMonth($moisCourant, $anneeCourante);
+    } else {
+        // Calcul manuel des retenues du mois
+        $totalRetenuesMois = 0;
+        foreach ($retenues as $retenue) {
+            if ($retenue->getMois() === $moisCourant && $retenue->getAnnee() == $anneeCourante) {
+                $totalRetenuesMois += $retenue->getMontant();
+            }
+        }
+    }
+}
+
 $salaireNetMois = $totalRemunerationsMois - $totalRetenuesMois;
 
 $tauxRetenue = 0;
@@ -83,7 +115,7 @@ $anneeScolaireCourante = AnneeScolaire::getCurrent();
 $anneeScolaireDesignation = $anneeScolaireCourante ? $anneeScolaireCourante->getDesignationAnn() : 'Non définie';
 
 $totalAvantagesAnnee = 0;
-if ($anneeScolaireCourante) {
+if ($anneeScolaireCourante && method_exists('Avantage', 'getTotalByAnnee')) {
     $totalAvantagesAnnee = Avantage::getTotalByAnnee($anneeScolaireCourante->getId());
 }
 
@@ -224,7 +256,7 @@ $recent_users = array_reverse($recent_users);
             <a href="pages/remunerations/index.php"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
             <a href="pages/retenues/index.php"><i class="fas fa-arrow-down"></i> Retenues</a>
             <a href="pages/avantages/index.php"><i class="fas fa-gift"></i> Avantages</a>
-            <a href="pages/avantages/AnneeScolaire.php"><i class="fas fa-calendar-alt"></i> Années</a>
+            <a href="pages/avances/index.php"><i class="fas fa-calendar-alt"></i> Avances</a>
         </div>
     </div>
     <div class="header-right">

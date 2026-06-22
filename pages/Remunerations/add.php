@@ -9,8 +9,8 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-if ($_SESSION['user_role'] !== 'Administrateur' && $_SESSION['user_role'] !== 'Comptable' && $_SESSION['user_role'] !== 'Secretaire') {
-    $_SESSION['message'] = "Accès réservé aux administrateurs, comptables et secrétaires";
+if ($_SESSION['user_role'] !== 'Administrateur' && $_SESSION['user_role'] !== 'Caissier') {
+    $_SESSION['message'] = "Accès réservé aux administrateurs et caissiers";
     $_SESSION['message_type'] = 'error';
     header('Location: ../../Dashboard.php');
     exit;
@@ -175,30 +175,7 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
 </head>
 <body>
 
-<div class="header">
-    <div class="header-left">
-        <h1>💰 Gestion Rémunération</h1>
-        <div class="nav-links">
-            <a href="../../Dashboard.php"><i class="fas fa-chart-line"></i> Dashboard</a>
-            <?php if ($role === 'Administrateur'): ?>
-            <a href="../../pages/utilisateurs/index.php"><i class="fas fa-user-lock"></i> Utilisateurs</a>
-            <?php endif; ?>
-            <a href="../../pages/agents/index.php"><i class="fas fa-users"></i> Agents</a>
-            <a href="../../pages/services/index.php"><i class="fas fa-cogs"></i> Services</a>
-            <a href="../../pages/affectations/index.php"><i class="fas fa-tasks"></i> Affectations</a>
-            <a href="index.php" class="active"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
-            <a href="../../pages/retenues/index.php"><i class="fas fa-arrow-down"></i> Retenues</a>
-            <a href="../../pages/avantages/index.php"><i class="fas fa-gift"></i> Avantages</a>
-            <a href="../../pages/annees/index.php"><i class="fas fa-calendar-alt"></i> Années</a>
-        </div>
-    </div>
-    <div class="header-right">
-        <span class="role"><?php echo htmlspecialchars($role); ?></span>
-        <span class="username"><?php echo htmlspecialchars($username); ?></span>
-        <div class="avatar"><i class="fas fa-user"></i></div>
-        <a href="../../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
-    </div>
-</div>
+
 
 <div class="container">
 

@@ -196,7 +196,7 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
                 <select name="role" class="form-control <?php echo $error ? 'error' : ''; ?>" required>
                     <option value="">Sélectionner un rôle</option>
                     <option value="Administrateur" <?php echo (isset($_POST['role']) && $_POST['role'] === 'Administrateur') ? 'selected' : ''; ?>>Administrateur</option>
-                    <option value="Comptable" <?php echo (isset($_POST['role']) && $_POST['role'] === 'Comptable') ? 'selected' : ''; ?>>Comptable</option>
+                    <option value="Caissier" <?php echo (isset($_POST['role']) && $_POST['role'] === 'Caissier') ? 'selected' : ''; ?>>Caissier</option>
                     <option value="Secretaire" <?php echo (isset($_POST['role']) && $_POST['role'] === 'Secretaire') ? 'selected' : ''; ?>>Secrétaire</option>
                 </select>
             </div>

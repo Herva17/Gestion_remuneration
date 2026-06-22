@@ -10,8 +10,8 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-if ($_SESSION['user_role'] !== 'Administrateur' && $_SESSION['user_role'] !== 'Comptable' && $_SESSION['user_role'] !== 'Secretaire') {
-    $_SESSION['message'] = "Accès réservé aux administrateurs, comptables et secrétaires";
+if ($_SESSION['user_role'] !== 'Administrateur' && $_SESSION['user_role'] !== 'Caissier') {
+    $_SESSION['message'] = "Accès réservé aux administrateurs et aux caissiers";
     $_SESSION['message_type'] = 'error';
     header('Location: ../../Dashboard.php');
     exit;
@@ -20,6 +20,7 @@ if ($_SESSION['user_role'] !== 'Administrateur' && $_SESSION['user_role'] !== 'C
 $role = $_SESSION['user_role'] ?? 'Invité';
 $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
 $error = null;
+$success = false;
 
 $agents = Agent::getAll();
 $annees = AnneeScolaire::getAll();
@@ -48,57 +49,64 @@ $statutList = [
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id_agent = $_POST['id_agent'] ?? '';
+    // Récupération des données du formulaire
+    $id_agent = isset($_POST['id_agent']) ? (int)$_POST['id_agent'] : 0;
+    $id_annee = isset($_POST['id_annee']) ? (int)$_POST['id_annee'] : 0;
     $libelle = trim($_POST['libelle'] ?? '');
     $description = trim($_POST['description'] ?? '');
     $type_avantage = $_POST['type_avantage'] ?? 'autre';
-    $est_recurrent = isset($_POST['est_recurrent']) ? 1 : 0;
-    $date_debut = !empty($_POST['date_debut']) ? $_POST['date_debut'] : null;
-    $date_fin = !empty($_POST['date_fin']) ? $_POST['date_fin'] : null;
-    $id_annee = $_POST['id_annee'] ?? '';
-    $montant = $_POST['montant'] ?? '';
+    $montant = isset($_POST['montant']) ? floatval($_POST['montant']) : 0;
     $date_avantage = $_POST['date_avantage'] ?? date('Y-m-d');
     $mois = $_POST['mois'] ?? '';
-    $annee = $_POST['annee'] ?? '';
+    $annee = isset($_POST['annee']) ? (int)$_POST['annee'] : date('Y');
+    $est_recurrent = isset($_POST['est_recurrent']) ? 1 : 0;
     $statut = $_POST['statut'] ?? 'actif';
+    $date_debut = !empty($_POST['date_debut']) ? $_POST['date_debut'] : null;
+    $date_fin = !empty($_POST['date_fin']) ? $_POST['date_fin'] : null;
 
     // Validation
-    if (empty($id_agent)) {
+    if ($id_agent <= 0) {
         $error = "L'agent est requis";
     } elseif (empty($libelle)) {
         $error = "Le libellé est requis";
-    } elseif (empty($id_annee)) {
+    } elseif ($id_annee <= 0) {
         $error = "L'année scolaire est requise";
-    } elseif (empty($montant) || !is_numeric($montant) || floatval($montant) <= 0) {
+    } elseif ($montant <= 0) {
         $error = "Le montant est requis et doit être supérieur à 0";
     } elseif (empty($mois)) {
         $error = "Le mois est requis";
     } elseif (empty($annee)) {
         $error = "L'année est requise";
     } else {
-        $avantage = new Avantage(
-            $id_agent,
-            $libelle,
-            $description,
-            $type_avantage,
-            $est_recurrent,
-            $date_debut,
-            $date_fin,
-            $id_annee,
-            $montant,
-            $date_avantage,
-            $mois,
-            $annee,
-            $statut
-        );
-        
-        if ($avantage->insert()) {
-            $_SESSION['message'] = "Avantage ajouté avec succès";
-            $_SESSION['message_type'] = 'success';
-            header('Location: index.php');
-            exit;
-        } else {
-            $error = "Erreur lors de l'ajout de l'avantage";
+        try {
+            // ========== CORRECTION : Utilisation du constructeur correct ==========
+            // Le constructeur de Avantage est : 
+            // __construct($id_agent, $id_annee, $mois, $annee, $libelle, $type, $montant, $statut, $description, $est_recurrent, $id)
+            
+            $avantage = new Avantage(
+                $id_agent,           // id_agent
+                $id_annee,           // id_annee
+                $mois,               // mois
+                $annee,              // annee
+                $libelle,            // libelle
+                $type_avantage,      // type
+                $montant,            // montant
+                $statut,             // statut
+                $description,        // description
+                $est_recurrent       // est_recurrent
+                // $id est optionnel (null par défaut)
+            );
+            
+            if ($avantage->insert()) {
+                $_SESSION['message'] = "Avantage ajouté avec succès";
+                $_SESSION['message_type'] = 'success';
+                header('Location: index.php');
+                exit;
+            } else {
+                $error = "Erreur lors de l'ajout de l'avantage. Veuillez réessayer.";
+            }
+        } catch (Exception $e) {
+            $error = "Erreur : " . $e->getMessage();
         }
     }
 }
@@ -147,7 +155,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         textarea.form-control { resize: vertical; min-height: 80px; }
 
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
 
         .help-text { font-size: 12px; color: #94a3b8; margin-top: 4px; }
 
@@ -185,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .nav-links { justify-content: center; gap: 2px; }
             .nav-links a { font-size: 12px; padding: 4px 8px; }
             .header-right { justify-content: center; gap: 10px; }
-            .form-row, .form-row-3 { grid-template-columns: 1fr; gap: 16px; }
+            .form-row { grid-template-columns: 1fr; gap: 16px; }
             .card { padding: 20px; }
             .top { flex-direction: column; align-items: stretch; }
             .top .btn { width: 100%; justify-content: center; }
@@ -193,31 +200,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </style>
 </head>
 <body>
-
-<div class="header">
-    <div class="header-left">
-        <h1><i class="fas fa-gift" style="color:#eab308;"></i> Gestion Avantages</h1>
-        <nav class="nav-links">
-            <a href="../../Dashboard.php"><i class="fas fa-chart-line"></i> Dashboard</a>
-            <?php if ($role === 'Administrateur'): ?>
-            <a href="../../pages/utilisateurs/index.php"><i class="fas fa-user-lock"></i> Utilisateurs</a>
-            <?php endif; ?>
-            <a href="../../pages/agents/index.php"><i class="fas fa-users"></i> Agents</a>
-            <a href="../../pages/services/index.php"><i class="fas fa-cogs"></i> Services</a>
-            <a href="../../pages/affectations/index.php"><i class="fas fa-tasks"></i> Affectations</a>
-            <a href="../../pages/remunerations/index.php"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
-            <a href="../../pages/retenues/index.php"><i class="fas fa-arrow-down"></i> Retenues</a>
-            <a href="index.php" class="active"><i class="fas fa-gift"></i> Avantages</a>
-            <a href="../../avantages/AnneeScolaire.php"><i class="fas fa-calendar-alt"></i> Années</a>
-        </nav>
-    </div>
-    <div class="header-right">
-        <span class="role"><?php echo htmlspecialchars($role); ?></span>
-        <span class="username"><?php echo htmlspecialchars($username); ?></span>
-        <div class="avatar"><?php echo strtoupper(substr($username, 0, 1)); ?></div>
-        <a href="../../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
-    </div>
-</div>
 
 <div class="container">
 
@@ -238,6 +220,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
     <?php endif; ?>
 
+    <?php if ($success): ?>
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i>
+        Avantage ajouté avec succès !
+    </div>
+    <?php endif; ?>
+
     <div class="card">
         <div class="info-box">
             <i class="fas fa-info-circle"></i>
@@ -253,7 +242,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <option value="">-- Sélectionner un agent --</option>
                         <?php if (!empty($agents)): ?>
                             <?php foreach ($agents as $agent): ?>
-                            <option value="<?php echo $agent->getIdAgent(); ?>">
+                            <option value="<?php echo $agent->getIdAgent(); ?>" 
+                                    <?php echo (isset($_POST['id_agent']) && $_POST['id_agent'] == $agent->getIdAgent()) ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($agent->getNomComplet() . ' - ' . $agent->getFonction()); ?>
                             </option>
                             <?php endforeach; ?>
@@ -269,7 +259,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <option value="">-- Sélectionner une année --</option>
                         <?php if (!empty($annees)): ?>
                             <?php foreach ($annees as $annee): ?>
-                            <option value="<?php echo $annee->getId(); ?>">
+                            <option value="<?php echo $annee->getId(); ?>"
+                                    <?php echo (isset($_POST['id_annee']) && $_POST['id_annee'] == $annee->getId()) ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($annee->getDesignationAnn()); ?>
                             </option>
                             <?php endforeach; ?>
@@ -303,7 +294,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label for="type_avantage">Type d'Avantage <span class="required">*</span></label>
                     <select name="type_avantage" id="type_avantage" class="form-control" required>
                         <?php foreach ($typeList as $key => $label): ?>
-                            <option value="<?php echo $key; ?>"><?php echo $label; ?></option>
+                            <option value="<?php echo $key; ?>" <?php echo (isset($_POST['type_avantage']) && $_POST['type_avantage'] == $key) ? 'selected' : ''; ?>>
+                                <?php echo $label; ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -311,7 +304,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label for="montant">Montant <span class="required">*</span></label>
                     <input type="number" name="montant" id="montant" class="form-control" 
                            step="0.01" min="0" placeholder="0.00"
-                           value="<?php echo isset($_POST['montant']) ? $_POST['montant'] : ''; ?>" required>
+                           value="<?php echo isset($_POST['montant']) ? htmlspecialchars($_POST['montant']) : ''; ?>" required>
                     <div class="help-text">Montant de l'avantage en dollars ($)</div>
                 </div>
             </div>
@@ -331,7 +324,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <select name="mois" id="mois" class="form-control" required>
                         <option value="">-- Sélectionner un mois --</option>
                         <?php foreach ($moisList as $mois): ?>
-                            <option value="<?php echo $mois; ?>" <?php echo $mois === date('F') ? 'selected' : ''; ?>>
+                            <option value="<?php echo $mois; ?>" 
+                                    <?php echo (isset($_POST['mois']) && $_POST['mois'] == $mois) ? 'selected' : ''; ?>>
                                 <?php echo $mois; ?>
                             </option>
                         <?php endforeach; ?>
@@ -345,7 +339,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $anneeActuelle = date('Y');
                         for ($a = $anneeActuelle - 2; $a <= $anneeActuelle + 2; $a++): 
                         ?>
-                            <option value="<?php echo $a; ?>" <?php echo $a == date('Y') ? 'selected' : ''; ?>>
+                            <option value="<?php echo $a; ?>" 
+                                    <?php echo (isset($_POST['annee']) && $_POST['annee'] == $a) ? 'selected' : ''; ?>>
                                 <?php echo $a; ?>
                             </option>
                         <?php endfor; ?>
@@ -386,7 +381,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label for="statut">Statut <span class="required">*</span></label>
                     <select name="statut" id="statut" class="form-control" required>
                         <?php foreach ($statutList as $key => $label): ?>
-                            <option value="<?php echo $key; ?>"><?php echo $label; ?></option>
+                            <option value="<?php echo $key; ?>" 
+                                    <?php echo (isset($_POST['statut']) && $_POST['statut'] == $key) ? 'selected' : ''; ?>>
+                                <?php echo $label; ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>

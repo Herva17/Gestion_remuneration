@@ -9,8 +9,8 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-if ($_SESSION['user_role'] !== 'Administrateur' && $_SESSION['user_role'] !== 'Comptable' && $_SESSION['user_role'] !== 'Secretaire') {
-    $_SESSION['message'] = "Accès réservé aux administrateurs, comptables et secrétaires";
+if ($_SESSION['user_role'] !== 'Administrateur' && $_SESSION['user_role'] !== 'Caissier') {
+    $_SESSION['message'] = "Accès réservé aux administrateurs et caissiers";
     $_SESSION['message_type'] = 'error';
     header('Location: ../../Dashboard.php');
     exit;
@@ -41,6 +41,12 @@ foreach ($remunerations as $remuneration) {
 $moisActuel = date('F');
 $anneeActuelle = date('Y');
 $totalMois = Remuneration::getTotalByMonth($moisActuel, $anneeActuelle);
+
+// ========== DÉTERMINER LA PAGE DE RETOUR ==========
+$dashboardRetour = '../../Dashboard.php'; // Par défaut (administrateur)
+if (isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'caissier') {
+    $dashboardRetour = '../caissier/dashboard.php';
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -101,7 +107,7 @@ $totalMois = Remuneration::getTotalByMonth($moisActuel, $anneeActuelle);
         .empty { text-align: center; padding: 24px; color: #999; }
         .empty i { font-size: 24px; display: block; margin-bottom: 8px; }
 
-        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 14px; }
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; transition: 0.2s; }
         .btn-primary { background: #2563eb; color: white; }
         .btn-primary:hover { background: #1d4ed8; }
         .btn-success { background: #16a34a; color: white; }
@@ -114,6 +120,8 @@ $totalMois = Remuneration::getTotalByMonth($moisActuel, $anneeActuelle);
         .btn-red:hover { background: #b91c1c; }
         .btn-pink { background: #ec4899; color: white; }
         .btn-pink:hover { background: #db2777; }
+        .btn-secondary { background: #e5e7eb; color: #374151; }
+        .btn-secondary:hover { background: #d1d5db; }
 
         .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
         .alert-success { background: #d1fae5; border: 1px solid #a7f3d0; color: #065f46; }
@@ -132,6 +140,7 @@ $totalMois = Remuneration::getTotalByMonth($moisActuel, $anneeActuelle);
         .flex-wrap { flex-wrap: wrap; }
         .justify-between { justify-content: space-between; }
         .mt-4 { margin-top: 16px; }
+        .mb-3 { margin-bottom: 12px; }
 
         .footer { text-align: center; margin-top: 20px; color: #999; font-size: 12px; padding: 10px 0; }
 
@@ -167,37 +176,64 @@ $totalMois = Remuneration::getTotalByMonth($moisActuel, $anneeActuelle);
             .grid-4 { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
             .btn-group { flex-direction: column; width: 100%; }
             .btn-group .btn { justify-content: center; }
+            .top { flex-direction: column; align-items: stretch; }
+            .top .btn { justify-content: center; }
         }
     </style>
 </head>
 <body>
 
+<!-- ===== HEADER ===== -->
 <div class="header">
     <div class="header-left">
-        <h1>💰 Gestion Rémunération</h1>
-        <div class="nav-links">
-            <a href="../../Dashboard.php"><i class="fas fa-chart-line"></i> Dashboard</a>
-            <?php if ($role === 'Administrateur'): ?>
-            <a href="../../pages/utilisateurs/index.php"><i class="fas fa-user-lock"></i> Utilisateurs</a>
+        <h1><i class="fas fa-money-bill-wave" style="color:#2563eb;"></i> Gestion Rémunérations</h1>
+        <nav class="nav-links">
+            <?php if (strtolower($role) === 'administrateur'): ?>
+                <a href="../../Dashboard.php"><i class="fas fa-chart-line"></i> Dashboard</a>
+                <a href="../utilisateurs/index.php"><i class="fas fa-user-lock"></i> Utilisateurs</a>
+                <a href="../agents/index.php"><i class="fas fa-users"></i> Agents</a>
+                <a href="../services/index.php"><i class="fas fa-cogs"></i> Services</a>
+                <a href="../affectations/index.php"><i class="fas fa-tasks"></i> Affectations</a>
+                <a href="index.php" class="active"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
+                <a href="../retenues/index.php"><i class="fas fa-arrow-down"></i> Retenues</a>
+                <a href="../avantages/index.php"><i class="fas fa-gift"></i> Avantages</a>
+                <a href="../avances/index.php"><i class="fas fa-hand-holding-usd"></i> Avances</a>
+                <a href="../avantages/AnneeScolaire.php"><i class="fas fa-calendar-alt"></i> Années</a>
+            <?php elseif (strtolower($role) === 'caissier'): ?>
+                <a href="../caissier/dashboard.php"><i class="fas fa-chart-line"></i> Dashboard</a>
+                <a href="index.php" class="active"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
+                <a href="../retenues/index.php"><i class="fas fa-arrow-down"></i> Retenues</a>
+                <a href="../avantages/index.php"><i class="fas fa-gift"></i> Avantages</a>
+                <a href="../avances/index.php"><i class="fas fa-hand-holding-usd"></i> Avances</a>
             <?php endif; ?>
-            <a href="../../pages/agents/index.php"><i class="fas fa-users"></i> Agents</a>
-            <a href="../../pages/services/index.php"><i class="fas fa-cogs"></i> Services</a>
-            <a href="../../pages/affectations/index.php"><i class="fas fa-tasks"></i> Affectations</a>
-            <a href="index.php" class="active"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
-            <a href="../../pages/retenues/index.php"><i class="fas fa-arrow-down"></i> Retenues</a>
-            <a href="../../pages/avantages/index.php"><i class="fas fa-gift"></i> Avantages</a>
-            <a href="../../pages/avantages/AnneeScolaire.php"><i class="fas fa-calendar-alt"></i> Années</a>
-        </div>
+        </nav>
     </div>
     <div class="header-right">
         <span class="role"><?php echo htmlspecialchars($role); ?></span>
         <span class="username"><?php echo htmlspecialchars($username); ?></span>
-        <div class="avatar"><i class="fas fa-user"></i></div>
+        <div class="avatar"><?php echo strtoupper(substr($username, 0, 1)); ?></div>
         <a href="../../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
     </div>
 </div>
 
+<!-- ===== CONTENU ===== -->
 <div class="container">
+
+    <!-- ===== BOUTON RETOUR ===== -->
+    <div class="mb-3">
+        <a href="<?php echo $dashboardRetour; ?>" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Retour au Dashboard
+        </a>
+        <?php if (strtolower($role) === 'caissier'): ?>
+            <span style="font-size:12px;color:#16a34a;margin-left:8px;">
+                <i class="fas fa-info-circle"></i> Retour vers le dashboard caissier
+            </span>
+        <?php else: ?>
+            <span style="font-size:12px;color:#2563eb;margin-left:8px;">
+                <i class="fas fa-info-circle"></i> Retour vers le dashboard principal
+            </span>
+        <?php endif; ?>
+    </div>
 
     <div class="top">
         <div>
@@ -287,10 +323,8 @@ $totalMois = Remuneration::getTotalByMonth($moisActuel, $anneeActuelle);
                     <?php else: ?>
                         <?php foreach ($remunerations as $remuneration): 
                             $agent = $remuneration->getAgent();
-                            // Récupération de l'ID de l'agent via la méthode appropriée
                             $agentId = 0;
                             if ($agent) {
-                                // Essayez différentes méthodes possibles
                                 if (method_exists($agent, 'getIdAgent')) {
                                     $agentId = $agent->getIdAgent();
                                 } elseif (method_exists($agent, 'getId')) {
