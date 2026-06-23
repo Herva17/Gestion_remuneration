@@ -198,7 +198,6 @@ if (isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'cai
                 <a href="../retenues/index.php"><i class="fas fa-arrow-down"></i> Retenues</a>
                 <a href="../avantages/index.php"><i class="fas fa-gift"></i> Avantages</a>
                 <a href="../avances/index.php"><i class="fas fa-hand-holding-usd"></i> Avances</a>
-                <a href="../avantages/AnneeScolaire.php"><i class="fas fa-calendar-alt"></i> Années</a>
             <?php elseif (strtolower($role) === 'caissier'): ?>
                 <a href="../caissier/dashboard.php"><i class="fas fa-chart-line"></i> Dashboard</a>
                 <a href="index.php" class="active"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>

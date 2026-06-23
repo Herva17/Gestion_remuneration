@@ -145,7 +145,6 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
             <a href="../remunerations/index.php"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
             <a href="../retenues/index.php"><i class="fas fa-arrow-down"></i> Retenues</a>
             <a href="../avantages/index.php"><i class="fas fa-gift"></i> Avantages</a>
-            <a href="../avantages/AnneeScolaire.php"><i class="fas fa-calendar-alt"></i> Années</a>
         </div>
     </div>
     <div class="header-right">
@@ -242,8 +241,7 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
                                 $roleUser = $user->getRole();
                                 $color = 'gray';
                                 if ($roleUser === 'Administrateur') $color = 'red';
-                                elseif ($roleUser === 'Comptable') $color = 'green';
-                                elseif ($roleUser === 'Secretaire') $color = 'yellow';
+                                elseif ($roleUser === 'Caissier') $color = 'green';
                                 ?>
                                 <span class="tag tag-<?php echo $color; ?>"><?php echo htmlspecialchars($roleUser); ?></span>
                             </td>

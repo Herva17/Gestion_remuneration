@@ -43,9 +43,15 @@ $totalAgents = count($agents);
 
 <!-- Barre de navigation -->
 <nav class="bg-white shadow px-6 py-3 flex justify-between items-center flex-wrap gap-3">
-    <h1 class="text-xl font-bold text-blue-600">
-        <i class="fas fa-coins mr-2"></i>Gestion Rémunération
-    </h1>
+    <div class="flex items-center gap-3">
+        <!-- Bouton Retour -->
+        <a href="javascript:history.back()" class="text-gray-600 hover:text-blue-600 transition" title="Retour">
+            <i class="fas fa-arrow-left text-lg"></i>
+        </a>
+        <h1 class="text-xl font-bold text-blue-600">
+            <i class="fas fa-coins mr-2"></i>Gestion Rémunération
+        </h1>
+    </div>
     <div class="flex items-center gap-3 flex-wrap">
         <span class="text-sm text-gray-600"><?php echo htmlspecialchars($role); ?></span>
         <span class="text-sm font-semibold text-gray-800"><?php echo htmlspecialchars($username); ?></span>
@@ -63,13 +69,29 @@ $totalAgents = count($agents);
 
     <!-- En-tête -->
     <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
-        <div>
-            <h2 class="text-2xl font-bold text-gray-800">Agents</h2>
-            <p class="text-sm text-gray-500">Liste des agents de l'établissement (<?php echo $totalAgents; ?> agent<?php echo $totalAgents > 1 ? 's' : ''; ?>)</p>
+        <div class="flex items-center gap-3">
+            <!-- Deuxième bouton Retour (optionnel) -->
+            <a href="javascript:history.back()" class="text-gray-500 hover:text-blue-600 transition" title="Retour">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">Agents</h2>
+                <p class="text-sm text-gray-500">Liste des agents de l'établissement (<?php echo $totalAgents; ?> agent<?php echo $totalAgents > 1 ? 's' : ''; ?>)</p>
+            </div>
         </div>
-        <a href="add.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition">
-            <i class="fas fa-plus"></i> Ajouter
-        </a>
+        <div class="flex gap-2">
+            <!-- NOUVEAU : Bouton Liste imprimable -->
+            <a href="printable_list.php" target="_blank" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition">
+                <i class="fas fa-print"></i> Liste imprimable
+            </a>
+            <!-- Bouton Retour sous forme de lien -->
+            <a href="javascript:history.back()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition">
+                <i class="fas fa-arrow-left"></i> Retour
+            </a>
+            <a href="add.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition">
+                <i class="fas fa-plus"></i> Ajouter
+            </a>
+        </div>
     </div>
 
     <!-- Message -->
@@ -226,6 +248,13 @@ $totalAgents = count($agents);
         <div class="px-4 py-3 bg-gray-50 border-t flex justify-between items-center flex-wrap gap-2">
             <span class="text-sm text-gray-600">Total : <strong><?php echo $totalAgents; ?></strong> agent<?php echo $totalAgents > 1 ? 's' : ''; ?></span>
             <div class="flex gap-2">
+                <!-- Bouton Retour dans le pied de page -->
+                <a href="javascript:history.back()" class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-100 transition flex items-center gap-1">
+                    <i class="fas fa-arrow-left"></i> Retour
+                </a>
+                <a href="printable_list.php" target="_blank" class="px-3 py-1 border border-green-300 rounded text-sm hover:bg-green-50 transition flex items-center gap-1 text-green-600">
+                    <i class="fas fa-print"></i> Imprimer
+                </a>
                 <button class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-100 transition" disabled>
                     <i class="fas fa-chevron-left"></i>
                 </button>

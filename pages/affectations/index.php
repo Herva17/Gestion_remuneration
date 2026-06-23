@@ -143,7 +143,6 @@ $totalAffectations = count($affectations);
             <a href="../../pages/remunerations/index.php"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
             <a href="../../pages/retenues/index.php"><i class="fas fa-arrow-down"></i> Retenues</a>
             <a href="../../pages/avantages/index.php"><i class="fas fa-gift"></i> Avantages</a>
-            <a href="../../avantages/AnneeScolaire.php"><i class="fas fa-calendar-alt"></i> Années</a>
         </div>
     </div>
     <div class="header-right">

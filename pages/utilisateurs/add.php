@@ -142,7 +142,6 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
             <a href="../remunerations/index.php"><i class="fas fa-money-bill-wave"></i> Rémunérations</a>
             <a href="../retenues/index.php"><i class="fas fa-arrow-down"></i> Retenues</a>
             <a href="../avantages/index.php"><i class="fas fa-gift"></i> Avantages</a>
-            <a href="../annees/index.php"><i class="fas fa-calendar-alt"></i> Années</a>
         </div>
     </div>
     <div class="header-right">
