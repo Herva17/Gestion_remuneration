@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 22, 2026 at 11:48 PM
+-- Generation Time: Jun 24, 2026 at 06:30 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -32,6 +32,7 @@ CREATE TABLE `affectation` (
   `id_agent` int(11) NOT NULL,
   `id_service` int(11) NOT NULL,
   `lieu_affectation` varchar(150) DEFAULT NULL,
+  `montant_remunerer` float NOT NULL,
   `date_affectation` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -39,8 +40,9 @@ CREATE TABLE `affectation` (
 -- Dumping data for table `affectation`
 --
 
-INSERT INTO `affectation` (`id`, `id_agent`, `id_service`, `lieu_affectation`, `date_affectation`) VALUES
-(2, 2, 2, 'Direction', '2026-06-22');
+INSERT INTO `affectation` (`id`, `id_agent`, `id_service`, `lieu_affectation`, `montant_remunerer`, `date_affectation`) VALUES
+(3, 2, 2, 'Direction', 300, '2026-06-24'),
+(4, 1, 4, 'Direction', 500, '2026-06-24');
 
 -- --------------------------------------------------------
 
@@ -153,7 +155,7 @@ INSERT INTO `avantages` (`id`, `id_agent`, `libelle`, `description`, `type_avant
 CREATE TABLE `remuneration` (
   `id` int(11) NOT NULL,
   `id_agent` int(11) NOT NULL,
-  `montant` decimal(12,2) NOT NULL,
+  `id_affectation` int(11) NOT NULL,
   `date_remun` date DEFAULT NULL,
   `mois` varchar(20) DEFAULT NULL,
   `annee` varchar(10) DEFAULT NULL
@@ -163,8 +165,8 @@ CREATE TABLE `remuneration` (
 -- Dumping data for table `remuneration`
 --
 
-INSERT INTO `remuneration` (`id`, `id_agent`, `montant`, `date_remun`, `mois`, `annee`) VALUES
-(4, 2, 300.00, '2026-06-22', 'Juin', '2026');
+INSERT INTO `remuneration` (`id`, `id_agent`, `id_affectation`, `date_remun`, `mois`, `annee`) VALUES
+(5, 2, 3, '2026-06-24', 'Juin', '2026');
 
 -- --------------------------------------------------------
 
@@ -195,7 +197,8 @@ CREATE TABLE `retenue` (
 --
 
 INSERT INTO `retenue` (`id`, `id_agent`, `libelle`, `description`, `type_retenue`, `est_recurrent`, `date_debut`, `date_fin`, `montant`, `date_retenue`, `mois`, `annee`, `statut`, `created_at`, `updated_at`) VALUES
-(4, 2, 'Assurance sociale', 'ghghjkgjhgkdfggf', 'assurance', 1, NULL, NULL, 20.00, '2026-06-22', 'Juin', '2026', 'actif', '2026-06-22 20:28:42', '2026-06-22 20:28:42');
+(4, 2, 'Assurance sociale', 'ghghjkgjhgkdfggf', 'assurance', 1, NULL, NULL, 20.00, '2026-06-22', 'Juin', '2026', 'actif', '2026-06-22 20:28:42', '2026-06-22 20:28:42'),
+(5, 2, 'Prime Transport', 'KLKLKLMKLMKLKLMQ', 'autre', 1, NULL, NULL, 23.00, '2026-06-24', 'Juin', '2026', 'actif', '2026-06-24 02:28:16', '2026-06-24 02:28:16');
 
 -- --------------------------------------------------------
 
@@ -288,7 +291,8 @@ ALTER TABLE `avantages`
 --
 ALTER TABLE `remuneration`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `id_agent` (`id_agent`);
+  ADD KEY `id_agent` (`id_agent`),
+  ADD KEY `id_affectation` (`id_affectation`);
 
 --
 -- Indexes for table `retenue`
@@ -318,7 +322,7 @@ ALTER TABLE `utilisateur`
 -- AUTO_INCREMENT for table `affectation`
 --
 ALTER TABLE `affectation`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `agent`
@@ -348,13 +352,13 @@ ALTER TABLE `avantages`
 -- AUTO_INCREMENT for table `remuneration`
 --
 ALTER TABLE `remuneration`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `retenue`
 --
 ALTER TABLE `retenue`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `service`
@@ -396,7 +400,8 @@ ALTER TABLE `avantages`
 -- Constraints for table `remuneration`
 --
 ALTER TABLE `remuneration`
-  ADD CONSTRAINT `remuneration_ibfk_1` FOREIGN KEY (`id_agent`) REFERENCES `agent` (`id_agent`) ON DELETE CASCADE ON UPDATE CASCADE;
+  ADD CONSTRAINT `remuneration_ibfk_1` FOREIGN KEY (`id_agent`) REFERENCES `agent` (`id_agent`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `remuneration_ibfk_2` FOREIGN KEY (`id_affectation`) REFERENCES `affectation` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `retenue`
