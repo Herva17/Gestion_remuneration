@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../Config/Database.php';
 require_once __DIR__ . '/Agent.php';
+require_once __DIR__ . '/Affectation.php';
 require_once __DIR__ . '/avantages.php';
 require_once __DIR__ . '/Retenue.php';
 require_once __DIR__ . '/Avance.php';
@@ -9,13 +10,14 @@ require_once __DIR__ . '/Avance.php';
 class Remuneration {
     private $id;
     private $id_agent;
-    private $montant;
+    private $id_affectation;
     private $date_remun;
     private $mois;
     private $annee;
     private $db;
 
     private $agent;
+    private $affectation;
     private $avantages;
     private $retenues;
     private $avances;
@@ -38,7 +40,7 @@ class Remuneration {
 
     public function __construct(
         $id_agent = null,
-        $montant = null,
+        $id_affectation = null,
         $date_remun = null,
         $mois = null,
         $annee = null,
@@ -46,7 +48,7 @@ class Remuneration {
     ) {
         $this->id = $id;
         $this->id_agent = $id_agent;
-        $this->montant = $montant;
+        $this->id_affectation = $id_affectation;
         $this->date_remun = $date_remun;
         $this->mois = $mois;
         $this->annee = $annee;
@@ -61,19 +63,53 @@ class Remuneration {
     // ========== GETTERS ET SETTERS ==========
     public function getId() { return $this->id; }
     public function getIdAgent() { return $this->id_agent; }
-    public function getMontant() { return $this->montant; }
+    public function getIdAffectation() { return $this->id_affectation; }
     public function getDateRemun() { return $this->date_remun; }
     public function getMois() { return $this->mois; }
     public function getAnnee() { return $this->annee; }
 
     public function setId($id) { $this->id = $id; return $this; }
     public function setIdAgent($id_agent) { $this->id_agent = $id_agent; return $this; }
-    public function setMontant($montant) { $this->montant = $montant; return $this; }
+    public function setIdAffectation($id_affectation) { $this->id_affectation = $id_affectation; return $this; }
     public function setDateRemun($date_remun) { $this->date_remun = $date_remun; return $this; }
     public function setMois($mois) { $this->mois = $mois; return $this; }
     public function setAnnee($annee) { $this->annee = $annee; return $this; }
 
+    /**
+     * Récupère le montant de base depuis l'affectation
+     * @return float|null
+     */
+    public function getMontant() {
+        if ($this->id_affectation) {
+            $affectation = $this->getAffectation();
+            if ($affectation) {
+                return $affectation->getMontantRemunerer();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Alias pour getMontant() - compatibilité avec l'ancien code
+     * @return float|null
+     */
+    public function getMontantBase() {
+        return $this->getMontant();
+    }
+
     // ========== MÉTHODES DE CHARGEMENT ==========
+
+    /**
+     * Charge l'affectation associée
+     */
+    private function loadAffectation() {
+        if ($this->affectation === null && $this->id_affectation) {
+            $this->affectation = Affectation::getById($this->id_affectation);
+            if ($this->affectation && $this->id_agent === null) {
+                $this->id_agent = $this->affectation->getIdAgent();
+            }
+        }
+    }
 
     /**
      * Charge les avantages de l'agent pour la période
@@ -115,6 +151,15 @@ class Remuneration {
     }
 
     // ========== MÉTHODES DE CALCUL ==========
+
+    /**
+     * Récupère l'affectation associée
+     * @return Affectation|null
+     */
+    public function getAffectation() {
+        $this->loadAffectation();
+        return $this->affectation;
+    }
 
     /**
      * Récupère tous les avantages de l'agent pour la période
@@ -227,7 +272,8 @@ class Remuneration {
      * @return float Salaire brut
      */
     public function getSalaireBrut() {
-        return $this->montant + $this->getTotalAvantages();
+        $montant = $this->getMontant() ?? 0;
+        return $montant + $this->getTotalAvantages();
     }
 
     /**
@@ -356,6 +402,7 @@ class Remuneration {
      * @return array Résumé complet
      */
     public function getResumeSalaire() {
+        $montant = $this->getMontant() ?? 0;
         $totalAvances = $this->getTotalAvances();
         $totalAvancesAll = $this->getTotalAvancesAll();
         $totalAvancesEnCours = $this->getTotalAvancesEnCours();
@@ -364,7 +411,8 @@ class Remuneration {
         $salaireNetAPayer = $this->getSalaireNetAPayer();
 
         return [
-            'salaire_base' => $this->montant,
+            'id_affectation' => $this->id_affectation,
+            'salaire_base' => $montant,
             'total_avantages' => $this->getTotalAvantages(),
             'salaire_brut' => $this->getSalaireBrut(),
             'total_retenues' => $this->getTotalRetenues(),
@@ -403,8 +451,9 @@ class Remuneration {
      * @return float Pourcentage des avantages
      */
     public function getPourcentageAvantages() {
-        if ($this->montant == 0) return 0;
-        return ($this->getTotalAvantages() / $this->montant) * 100;
+        $montant = $this->getMontant() ?? 0;
+        if ($montant == 0) return 0;
+        return ($this->getTotalAvantages() / $montant) * 100;
     }
 
     /**
@@ -441,6 +490,14 @@ class Remuneration {
         return $this->getTotalAvancesRemboursees() > 0;
     }
 
+    /**
+     * Vérifie si une affectation est associée
+     * @return bool
+     */
+    public function hasAffectation() {
+        return $this->id_affectation !== null && $this->id_affectation > 0;
+    }
+
     // ========== MÉTHODES D'EXPORT ==========
 
     /**
@@ -448,13 +505,20 @@ class Remuneration {
      * @return array Données formatées
      */
     public function toArray() {
+        $montant = $this->getMontant();
         return [
             'id' => $this->id,
             'id_agent' => $this->id_agent,
+            'id_affectation' => $this->id_affectation,
             'agent' => $this->getAgent() ? $this->getAgent()->getNomComplet() : null,
+            'affectation' => $this->getAffectation() ? [
+                'id' => $this->getAffectation()->getId(),
+                'lieu' => $this->getAffectation()->getLieuAffectation(),
+                'montant' => $this->getAffectation()->getMontantRemunerer()
+            ] : null,
             'mois' => $this->mois,
             'annee' => $this->annee,
-            'salaire_base' => $this->montant,
+            'salaire_base' => $montant,
             'avantages' => array_map(function($a) {
                 return [
                     'id' => $a->getId(),
@@ -490,7 +554,8 @@ class Remuneration {
             'salaire_net' => $this->getSalaireNet(),
             'salaire_net_a_payer' => $this->getSalaireNetAPayer(),
             'total_deductions' => $this->getTotalDeductions(),
-            'has_avances_en_cours' => $this->hasAvancesEnCours()
+            'has_avances_en_cours' => $this->hasAvancesEnCours(),
+            'has_affectation' => $this->hasAffectation()
         ];
     }
 
@@ -500,36 +565,48 @@ class Remuneration {
      */
     public function toHtml() {
         $resume = $this->getResumeSalaire();
+        $affectation = $this->getAffectation();
+        $montant = $this->getMontant() ?? 0;
+        
         $html = '<div class="recap-salaire">';
         $html .= '<h3>Récapitulatif du salaire - ' . $this->mois . ' ' . $this->annee . '</h3>';
+        
+        // Informations sur l'affectation
+        if ($affectation) {
+            $html .= '<div style="background:#eff6ff;padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:13px;">';
+            $html .= '<strong>Affectation :</strong> ' . htmlspecialchars($affectation->getLieuAffectation() ?: 'Non spécifié');
+            $html .= ' | <strong>Référence :</strong> #' . $affectation->getId();
+            $html .= '</div>';
+        }
+        
         $html .= '<table class="table table-bordered">';
-        $html .= '<tr><td>Salaire de base</td><td>' . number_format($resume['salaire_base'], 2) . ' $</td></tr>';
-        $html .= '<tr><td>Total avantages (' . $resume['nb_avantages'] . ')</td><td>' . number_format($resume['total_avantages'], 2) . ' $</td></tr>';
-        $html .= '<tr class="total"><td><strong>Salaire brut</strong></td><td><strong>' . number_format($resume['salaire_brut'], 2) . ' $</strong></td></tr>';
-        $html .= '<tr><td>Total retenues (' . $resume['nb_retenues'] . ')</td><td>' . number_format($resume['total_retenues'], 2) . ' $</td></tr>';
-        $html .= '<tr class="total"><td><strong>Salaire net</strong></td><td><strong>' . number_format($resume['salaire_net'], 2) . ' $</strong></td></tr>';
+        $html .= '<tr><td>Salaire de base</td><td>' . number_format($montant, 2) . ' F</td></tr>';
+        $html .= '<tr><td>Total avantages (' . $resume['nb_avantages'] . ')</td><td>' . number_format($resume['total_avantages'], 2) . ' F</td></tr>';
+        $html .= '<tr class="total"><td><strong>Salaire brut</strong></td><td><strong>' . number_format($resume['salaire_brut'], 2) . ' F</strong></td></tr>';
+        $html .= '<tr><td>Total retenues (' . $resume['nb_retenues'] . ')</td><td>' . number_format($resume['total_retenues'], 2) . ' F</td></tr>';
+        $html .= '<tr class="total"><td><strong>Salaire net</strong></td><td><strong>' . number_format($resume['salaire_net'], 2) . ' F</strong></td></tr>';
         
         // Affichage des avances
         if ($resume['nb_avances'] > 0) {
             $html .= '<tr style="background:#fff3cd;">';
             $html .= '<td><strong>Total avances (' . $resume['nb_avances'] . ')</strong></td>';
-            $html .= '<td><strong style="color:#f97316;">- ' . number_format($resume['total_avances'], 2) . ' $</strong></td>';
+            $html .= '<td><strong style="color:#f97316;">- ' . number_format($resume['total_avances'], 2) . ' F</strong></td>';
             $html .= '</tr>';
             
             // Détail des avances
             if ($resume['nb_avances_en_cours'] > 0) {
                 $html .= '<tr><td style="font-size:12px;color:#94a3b8;">&nbsp;&nbsp;Avances en cours (' . $resume['nb_avances_en_cours'] . ')</td>';
-                $html .= '<td style="font-size:12px;color:#f97316;">' . number_format($resume['total_avances_en_cours'], 2) . ' $</td></tr>';
+                $html .= '<td style="font-size:12px;color:#f97316;">' . number_format($resume['total_avances_en_cours'], 2) . ' F</td></tr>';
             }
             if ($resume['nb_avances_remboursees'] > 0) {
                 $html .= '<tr><td style="font-size:12px;color:#94a3b8;">&nbsp;&nbsp;Avances remboursées (' . $resume['nb_avances_remboursees'] . ')</td>';
-                $html .= '<td style="font-size:12px;color:#16a34a;">' . number_format($resume['total_avances_remboursees'], 2) . ' $</td></tr>';
+                $html .= '<td style="font-size:12px;color:#16a34a;">' . number_format($resume['total_avances_remboursees'], 2) . ' F</td></tr>';
             }
         }
         
         $html .= '<tr class="total final" style="background:linear-gradient(135deg, #2563eb, #1d4ed8);color:white;">';
         $html .= '<td><strong>Salaire net à payer</strong></td>';
-        $html .= '<td><strong>' . number_format($resume['salaire_net_a_payer'], 2) . ' $</strong></td>';
+        $html .= '<td><strong>' . number_format($resume['salaire_net_a_payer'], 2) . ' F</strong></td>';
         $html .= '</tr>';
         
         if ($resume['total_avances'] > 0) {
@@ -582,7 +659,7 @@ class Remuneration {
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
                 return new self(
                     $row['id_agent'],
-                    $row['montant'],
+                    $row['id_affectation'],
                     $row['date_remun'],
                     $row['mois'],
                     $row['annee'],
@@ -610,20 +687,52 @@ class Remuneration {
         return $result;
     }
 
+    /**
+     * Récupère une rémunération par affectation
+     * @param int $id_affectation ID de l'affectation
+     * @return self|null
+     */
+    public static function getByAffectation($id_affectation) {
+        $db = Database::getInstance();
+        $sql = "SELECT * FROM remuneration WHERE id_affectation = :id_affectation";
+        
+        try {
+            $stmt = $db->prepare($sql);
+            $stmt->bindParam(':id_affectation', $id_affectation);
+            $stmt->execute();
+
+            if ($stmt->rowCount() > 0) {
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                return new self(
+                    $row['id_agent'],
+                    $row['id_affectation'],
+                    $row['date_remun'],
+                    $row['mois'],
+                    $row['annee'],
+                    $row['id']
+                );
+            }
+            return null;
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la récupération de la rémunération : " . $e->getMessage());
+            return null;
+        }
+    }
+
     // ========== MÉTHODES DE GESTION ==========
 
     public function insert() {
-        if (empty($this->id_agent) || empty($this->montant)) {
+        if (empty($this->id_agent) || empty($this->id_affectation)) {
             return false;
         }
 
-        $sql = "INSERT INTO remuneration (id_agent, montant, date_remun, mois, annee) 
-                VALUES (:id_agent, :montant, :date_remun, :mois, :annee)";
+        $sql = "INSERT INTO remuneration (id_agent, id_affectation, date_remun, mois, annee) 
+                VALUES (:id_agent, :id_affectation, :date_remun, :mois, :annee)";
 
         try {
             $stmt = $this->db->prepare($sql);
             $stmt->bindParam(':id_agent', $this->id_agent);
-            $stmt->bindParam(':montant', $this->montant);
+            $stmt->bindParam(':id_affectation', $this->id_affectation);
             $stmt->bindParam(':date_remun', $this->date_remun);
             $stmt->bindParam(':mois', $this->mois);
             $stmt->bindParam(':annee', $this->annee);
@@ -646,7 +755,7 @@ class Remuneration {
 
         $sql = "UPDATE remuneration SET 
                 id_agent = :id_agent, 
-                montant = :montant, 
+                id_affectation = :id_affectation, 
                 date_remun = :date_remun, 
                 mois = :mois, 
                 annee = :annee 
@@ -655,7 +764,7 @@ class Remuneration {
         try {
             $stmt = $this->db->prepare($sql);
             $stmt->bindParam(':id_agent', $this->id_agent);
-            $stmt->bindParam(':montant', $this->montant);
+            $stmt->bindParam(':id_affectation', $this->id_affectation);
             $stmt->bindParam(':date_remun', $this->date_remun);
             $stmt->bindParam(':mois', $this->mois);
             $stmt->bindParam(':annee', $this->annee);
@@ -698,7 +807,7 @@ class Remuneration {
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
                 return new self(
                     $row['id_agent'],
-                    $row['montant'],
+                    $row['id_affectation'],
                     $row['date_remun'],
                     $row['mois'],
                     $row['annee'],
@@ -740,7 +849,7 @@ class Remuneration {
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $remunerations[] = new self(
                     $row['id_agent'],
-                    $row['montant'],
+                    $row['id_affectation'],
                     $row['date_remun'],
                     $row['mois'],
                     $row['annee'],
@@ -756,13 +865,14 @@ class Remuneration {
 
     public static function getAll($search = '') {
         $db = Database::getInstance();
-        $sql = "SELECT r.*, a.nom_complet 
+        $sql = "SELECT r.*, a.nom_complet, aff.lieu_affectation 
                 FROM remuneration r 
-                JOIN agent a ON r.id_agent = a.id_agent";
+                JOIN agent a ON r.id_agent = a.id_agent
+                LEFT JOIN affectation aff ON r.id_affectation = aff.id";
         $params = [];
 
         if ($search !== '') {
-            $sql .= " WHERE a.nom_complet LIKE :search OR r.mois LIKE :search OR r.annee LIKE :search";
+            $sql .= " WHERE a.nom_complet LIKE :search OR r.mois LIKE :search OR r.annee LIKE :search OR aff.lieu_affectation LIKE :search";
             $params[':search'] = '%' . $search . '%';
         }
 
@@ -779,7 +889,7 @@ class Remuneration {
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $remunerations[] = new self(
                     $row['id_agent'],
-                    $row['montant'],
+                    $row['id_affectation'],
                     $row['date_remun'],
                     $row['mois'],
                     $row['annee'],
@@ -808,7 +918,10 @@ class Remuneration {
 
     public static function getTotalByMonth($mois, $annee) {
         $db = Database::getInstance();
-        $sql = "SELECT SUM(montant) as total FROM remuneration WHERE mois = :mois AND annee = :annee";
+        $sql = "SELECT SUM(aff.montant_remunerer) as total 
+                FROM remuneration r
+                JOIN affectation aff ON r.id_affectation = aff.id
+                WHERE r.mois = :mois AND r.annee = :annee";
 
         try {
             $stmt = $db->prepare($sql);
@@ -819,6 +932,27 @@ class Remuneration {
             return $result['total'] ?? 0;
         } catch (PDOException $e) {
             error_log("Erreur lors du calcul du total : " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Récupère le total des rémunérations par affectation
+     * @param int $id_affectation ID de l'affectation
+     * @return float
+     */
+    public static function getTotalByAffectation($id_affectation) {
+        $db = Database::getInstance();
+        $sql = "SELECT COUNT(*) as total FROM remuneration WHERE id_affectation = :id_affectation";
+
+        try {
+            $stmt = $db->prepare($sql);
+            $stmt->bindParam(':id_affectation', $id_affectation);
+            $stmt->execute();
+            $result = $stmt->fetch();
+            return $result['total'] ?? 0;
+        } catch (PDOException $e) {
+            error_log("Erreur lors du comptage des rémunérations par affectation : " . $e->getMessage());
             return 0;
         }
     }

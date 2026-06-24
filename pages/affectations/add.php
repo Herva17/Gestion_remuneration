@@ -42,6 +42,7 @@ if (isset($_GET['id'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $lieu_affectation = trim($_POST['lieu_affectation'] ?? '');
+    $montant_remunerer = isset($_POST['montant_remunerer']) && $_POST['montant_remunerer'] !== '' ? (float) $_POST['montant_remunerer'] : null;
     $date_affectation = $_POST['date_affectation'] ?? '';
     $id_agent = $_POST['id_agent'] ?? '';
     $id_service = $_POST['id_service'] ?? '';
@@ -56,10 +57,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($id_service)) {
         $errors[] = "Le service est requis";
     }
+    if ($montant_remunerer !== null && $montant_remunerer < 0) {
+        $errors[] = "Le montant ne peut pas être négatif";
+    }
 
     if (empty($errors)) {
         if ($is_edit) {
             $affectation->setLieuAffectation($lieu_affectation);
+            $affectation->setMontantRemunerer($montant_remunerer);
             $affectation->setDateAffectation($date_affectation);
             $affectation->setIdAgent($id_agent);
             $affectation->setIdService($id_service);
@@ -77,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id_agent,
                 $id_service,
                 $lieu_affectation,
+                $montant_remunerer,
                 $date_affectation
             );
             
@@ -134,6 +140,7 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 4px; }
         .form-group label .required { color: #dc2626; }
+        .form-group .hint { font-size: 12px; color: #6b7280; font-weight: normal; margin-left: 4px; }
         .form-control { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: 0.2s; }
         .form-control:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
         .form-control.error { border-color: #dc2626; }
@@ -153,12 +160,15 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
 
         .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
         .alert-danger { background: #fee2e2; border: 1px solid #fecaca; color: #991b1b; }
+        .alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
 
         .flex { display: flex; }
         .gap-3 { gap: 12px; }
         .mt-4 { margin-top: 16px; }
         .mt-6 { margin-top: 24px; }
         .text-center { text-align: center; }
+        .text-xs { font-size: 12px; }
+        .text-gray-400 { color: #9ca3af; }
 
         .info-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; color: #1e40af; font-size: 14px; }
         .info-box .label { font-weight: 600; }
@@ -167,11 +177,33 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
         .input-icon .icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
         .input-icon input, .input-icon select { padding-left: 36px; }
 
+        /* Styles pour le champ montant */
+        .input-group { display: flex; align-items: center; }
+        .input-group .form-control { border-radius: 6px 0 0 6px; }
+        .input-group .input-group-text { 
+            background: #f3f4f6; 
+            border: 1px solid #d1d5db; 
+            border-left: none; 
+            padding: 10px 14px; 
+            border-radius: 0 6px 6px 0; 
+            font-size: 14px; 
+            color: #374151;
+            font-weight: 600;
+        }
+
+        .montant-example {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+            display: block;
+        }
+
         @media (max-width: 768px) {
             .header { flex-direction: column; align-items: stretch; }
             .header-left { flex-direction: column; align-items: stretch; }
             .nav-links { justify-content: center; }
             .header-right { justify-content: center; }
+            .card { margin: 0 10px; }
         }
     </style>
 </head>
@@ -277,6 +309,20 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
                            value="<?php echo $affectation ? htmlspecialchars($affectation->getLieuAffectation()) : ''; ?>" 
                            placeholder="Ex: Service Technique, Direction, Bureau Principal..." required>
                 </div>
+            </div>
+
+            <!-- Montant Rémunéré -->
+            <div class="form-group">
+                <label>Montant rémunéré <span class="hint">(optionnel)</span></label>
+                <div class="input-group">
+                    <input type="number" name="montant_remunerer" class="form-control <?php echo $error ? 'error' : ''; ?>" 
+                           value="<?php echo $affectation && $affectation->getMontantRemunerer() !== null ? $affectation->getMontantRemunerer() : ''; ?>" 
+                           placeholder="Ex: 1500.00" step="0.01" min="0">
+                    <span class="input-group-text">$</span>
+                </div>
+                <span class="montant-example">
+                    <i class="fas fa-info-circle"></i> Laissez vide si le montant n'est pas encore défini
+                </span>
             </div>
 
             <!-- Date -->

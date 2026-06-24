@@ -7,6 +7,7 @@ class Affectation {
     private $id_agent;
     private $id_service;
     private $lieu_affectation;
+    private $montant_remunerer;
     private $date_affectation;
     private $db;
 
@@ -17,6 +18,7 @@ class Affectation {
         $id_agent = null,
         $id_service = null,
         $lieu_affectation = null,
+        $montant_remunerer = null,
         $date_affectation = null,
         $id = null
     ) {
@@ -24,6 +26,7 @@ class Affectation {
         $this->id_agent = $id_agent;
         $this->id_service = $id_service;
         $this->lieu_affectation = $lieu_affectation;
+        $this->montant_remunerer = $montant_remunerer;
         $this->date_affectation = $date_affectation;
         $this->db = Database::getInstance();
     }
@@ -33,6 +36,7 @@ class Affectation {
     public function getIdAgent() { return $this->id_agent; }
     public function getIdService() { return $this->id_service; }
     public function getLieuAffectation() { return $this->lieu_affectation; }
+    public function getMontantRemunerer() { return $this->montant_remunerer; }
     public function getDateAffectation() { return $this->date_affectation; }
 
     // Setters
@@ -40,6 +44,7 @@ class Affectation {
     public function setIdAgent($id_agent) { $this->id_agent = $id_agent; return $this; }
     public function setIdService($id_service) { $this->id_service = $id_service; return $this; }
     public function setLieuAffectation($lieu_affectation) { $this->lieu_affectation = $lieu_affectation; return $this; }
+    public function setMontantRemunerer($montant_remunerer) { $this->montant_remunerer = $montant_remunerer; return $this; }
     public function setDateAffectation($date_affectation) { $this->date_affectation = $date_affectation; return $this; }
 
     public function insert() {
@@ -47,14 +52,15 @@ class Affectation {
             return false;
         }
 
-        $sql = "INSERT INTO affectation (id_agent, id_service, lieu_affectation, date_affectation) 
-                VALUES (:id_agent, :id_service, :lieu_affectation, :date_affectation)";
+        $sql = "INSERT INTO affectation (id_agent, id_service, lieu_affectation, montant_remunerer, date_affectation) 
+                VALUES (:id_agent, :id_service, :lieu_affectation, :montant_remunerer, :date_affectation)";
 
         try {
             $stmt = $this->db->prepare($sql);
             $stmt->bindParam(':id_agent', $this->id_agent);
             $stmt->bindParam(':id_service', $this->id_service);
             $stmt->bindParam(':lieu_affectation', $this->lieu_affectation);
+            $stmt->bindParam(':montant_remunerer', $this->montant_remunerer);
             $stmt->bindParam(':date_affectation', $this->date_affectation);
 
             if ($stmt->execute()) {
@@ -76,7 +82,8 @@ class Affectation {
         $sql = "UPDATE affectation SET 
                 id_agent = :id_agent, 
                 id_service = :id_service, 
-                lieu_affectation = :lieu_affectation, 
+                lieu_affectation = :lieu_affectation,
+                montant_remunerer = :montant_remunerer,
                 date_affectation = :date_affectation 
                 WHERE id = :id";
 
@@ -85,6 +92,7 @@ class Affectation {
             $stmt->bindParam(':id_agent', $this->id_agent);
             $stmt->bindParam(':id_service', $this->id_service);
             $stmt->bindParam(':lieu_affectation', $this->lieu_affectation);
+            $stmt->bindParam(':montant_remunerer', $this->montant_remunerer);
             $stmt->bindParam(':date_affectation', $this->date_affectation);
             $stmt->bindParam(':id', $this->id);
 
@@ -127,6 +135,7 @@ class Affectation {
                     $row['id_agent'],
                     $row['id_service'],
                     $row['lieu_affectation'],
+                    $row['montant_remunerer'],
                     $row['date_affectation'],
                     $row['id']
                 );
@@ -153,6 +162,7 @@ class Affectation {
                     $row['id_agent'],
                     $row['id_service'],
                     $row['lieu_affectation'],
+                    $row['montant_remunerer'],
                     $row['date_affectation'],
                     $row['id']
                 );
@@ -179,6 +189,7 @@ class Affectation {
                     $row['id_agent'],
                     $row['id_service'],
                     $row['lieu_affectation'],
+                    $row['montant_remunerer'],
                     $row['date_affectation'],
                     $row['id']
                 );
@@ -217,6 +228,7 @@ class Affectation {
                     $row['id_agent'],
                     $row['id_service'],
                     $row['lieu_affectation'],
+                    $row['montant_remunerer'],
                     $row['date_affectation'],
                     $row['id']
                 );

@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../../Config/Database.php';
 require_once __DIR__ . '/../../Classes/Remuneration.php';
 require_once __DIR__ . '/../../Classes/Agent.php';
+require_once __DIR__ . '/../../Classes/Affectation.php';
 require_once __DIR__ . '/../../Classes/avantages.php';
 require_once __DIR__ . '/../../Classes/Retenue.php';
 require_once __DIR__ . '/../../Classes/Avance.php';
@@ -39,6 +40,7 @@ $total_avances = 0;
 $total_brut = 0;
 $total_net = 0;
 $total_agents_avec_avances = 0;
+$remunerations_sans_affectation = 0;
 
 // Liste des mois
 $moisList = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 
@@ -61,7 +63,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $periode = $mois . ' ' . $annee;
         
         $db = Database::getInstance();
-        $sql = "SELECT * FROM remuneration WHERE mois = :mois AND annee = :annee ORDER BY date_remun DESC";
+        $sql = "SELECT r.*, 
+                       aff.lieu_affectation,
+                       aff.montant_remunerer as montant_affectation
+                FROM remuneration r
+                LEFT JOIN affectation aff ON r.id_affectation = aff.id
+                WHERE r.mois = :mois AND r.annee = :annee 
+                ORDER BY r.date_remun DESC";
         $stmt = $db->prepare($sql);
         $stmt->bindParam(':mois', $mois);
         $stmt->bindParam(':annee', $annee);
@@ -70,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $remuneration = new Remuneration(
                 $row['id_agent'],
-                $row['montant'],
+                $row['id_affectation'],
                 $row['date_remun'],
                 $row['mois'],
                 $row['annee'],
@@ -89,7 +97,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             foreach ($remunerations as $r) {
                 $id_agent = $r->getIdAgent();
-                $salaire_base = $r->getMontant();
+                
+                // Récupérer le montant depuis l'affectation
+                $salaire_base = $r->getMontant() ?? 0;
+                if ($salaire_base == 0 && $r->getIdAffectation() === null) {
+                    $remunerations_sans_affectation++;
+                }
                 
                 // Récupérer les avantages du mois
                 $avantages_mois = $r->getTotalAvantages();
@@ -197,6 +210,7 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
         .alert-error { background: #fee2e2; border: 1px solid #fecaca; color: #991b1b; }
         .alert-warning { background: #fef3c7; border: 1px solid #fde68a; color: #92400e; }
         .alert-success { background: #dcfce7; border: 1px solid #86efac; color: #166534; }
+        .alert-info { background: #dbeafe; border: 1px solid #93c5fd; color: #1e40af; }
 
         .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
         .badge-green { background: #dcfce7; color: #166534; }
@@ -205,6 +219,7 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
         .badge-orange { background: #ffedd5; color: #9a3412; }
         .badge-purple { background: #f3e8ff; color: #6d28d9; }
         .badge-yellow { background: #fef3c7; color: #92400e; }
+        .badge-gray { background: #f1f5f9; color: #475569; }
 
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin: 16px 0; }
         .stat-box { text-align: center; padding: 14px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e5e7eb; }
@@ -217,6 +232,7 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
         .text-red { color: #dc2626; }
         .text-orange { color: #f97316; }
         .text-purple { color: #8b5cf6; }
+        .text-yellow { color: #eab308; }
 
         .flex { display: flex; }
         .gap-3 { gap: 12px; }
@@ -242,6 +258,9 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
         .recap-box .amount { font-size: 28px; font-weight: 700; color: #16a34a; }
 
         .info-supp { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; padding: 8px 14px; font-size: 12px; color: #92400e; display: flex; align-items: center; gap: 8px; }
+        .info-supp.blue { background: #dbeafe; border-color: #93c5fd; color: #1e40af; }
+
+        .montant-zero { color: #94a3b8; font-style: italic; }
 
         @media print {
             body { background: white; padding: 0; }
@@ -347,6 +366,16 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
     </div>
     <?php endif; ?>
 
+    <?php if ($remunerations_sans_affectation > 0): ?>
+    <div class="alert alert-warning no-print">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+            <strong>Attention :</strong> <?php echo $remunerations_sans_affectation; ?> rémunération(s) n'ont pas d'affectation associée. 
+            Le montant de base est considéré comme 0 $.
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Fiche Périodique -->
     <?php if (!empty($remunerations)): ?>
     <div class="card">
@@ -364,29 +393,29 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
                 <div class="sub"><?php echo $total_agents; ?> agents concernés</div>
             </div>
             <div class="stat-box">
-                <div class="number text-blue"><?php echo number_format($total_brut, 2, ',', ' '); ?> $</div>
+                <div class="number text-blue">$ <?php echo number_format($total_brut, 2, ',', ' '); ?></div>
                 <div class="label">Salaire Brut Total</div>
                 <div class="sub">Base + Avantages</div>
             </div>
             <div class="stat-box">
-                <div class="number text-orange"><?php echo number_format($total_avantages, 2, ',', ' '); ?> $</div>
+                <div class="number text-orange">$ <?php echo number_format($total_avantages, 2, ',', ' '); ?></div>
                 <div class="label">Total Avantages</div>
                 <div class="sub">Accessoires accordés</div>
             </div>
             <div class="stat-box">
-                <div class="number text-red"><?php echo number_format($total_retenues, 2, ',', ' '); ?> $</div>
+                <div class="number text-red">$ <?php echo number_format($total_retenues, 2, ',', ' '); ?></div>
                 <div class="label">Total Retenues</div>
                 <div class="sub">Déductions effectuées</div>
             </div>
             <div class="stat-box">
-                <div class="number text-orange"><?php echo number_format($total_avances, 2, ',', ' '); ?> $</div>
+                <div class="number text-yellow">$ <?php echo number_format($total_avances, 2, ',', ' '); ?></div>
                 <div class="label">Total Avances</div>
                 <div class="sub"><?php echo $total_agents_avec_avances; ?> agents concernés</div>
             </div>
             <div class="stat-box" style="border-color:#16a34a;background:#f0fdf4;">
-                <div class="number text-green"><?php echo number_format($total_net, 2, ',', ' '); ?> $</div>
+                <div class="number text-green">$ <?php echo number_format($total_net, 2, ',', ' '); ?></div>
                 <div class="label">Salaire Net Total</div>
-                <div class="sub">Moyenne : <?php echo number_format($moyenne, 2, ',', ' '); ?> $</div>
+                <div class="sub">Moyenne : $ <?php echo number_format($moyenne, 2, ',', ' '); ?></div>
             </div>
         </div>
 
@@ -398,6 +427,7 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
                         <th>N°</th>
                         <th>Agent</th>
                         <th>Fonction</th>
+                        <th>Affectation</th>
                         <th>Salaire Base</th>
                         <th>Avantages</th>
                         <th>Salaire Brut</th>
@@ -420,7 +450,13 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
                     <?php foreach ($remunerations as $remuneration): 
                         $compteur++;
                         $id_agent = $remuneration->getIdAgent();
-                        $salaire_base = $remuneration->getMontant();
+                        
+                        // Récupérer le montant depuis l'affectation
+                        $salaire_base = $remuneration->getMontant() ?? 0;
+                        
+                        // Récupérer l'affectation pour le lieu
+                        $affectation = $remuneration->getAffectation();
+                        $lieu_affectation = $affectation ? $affectation->getLieuAffectation() : 'Non définie';
                         
                         // Récupérer les avantages du mois
                         $avantages_mois = $remuneration->getTotalAvantages();
@@ -480,9 +516,20 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
                             <?php endif; ?>
                         </td>
                         <td><?php echo htmlspecialchars($fonction); ?></td>
-                        <td class="text-right"><?php echo number_format($salaire_base, 2, ',', ' '); ?></td>
+                        <td>
+                            <span class="badge badge-blue" style="font-size:11px;">
+                                <?php echo htmlspecialchars($lieu_affectation); ?>
+                            </span>
+                        </td>
+                        <td class="text-right">
+                            <?php if ($salaire_base > 0): ?>
+                                $ <?php echo number_format($salaire_base, 2, ',', ' '); ?>
+                            <?php else: ?>
+                                <span class="montant-zero">$ 0,00</span>
+                            <?php endif; ?>
+                        </td>
                         <td class="text-right text-green">
-                            <?php echo number_format($avantages_mois, 2, ',', ' '); ?>
+                            $ <?php echo number_format($avantages_mois, 2, ',', ' '); ?>
                             <?php if (!empty($liste_avantages)): ?>
                                 <div style="font-size:9px;color:#94a3b8;">
                                     <?php foreach ($liste_avantages as $av): ?>
@@ -491,9 +538,9 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
                                 </div>
                             <?php endif; ?>
                         </td>
-                        <td class="text-right text-purple"><?php echo number_format($salaire_brut, 2, ',', ' '); ?></td>
+                        <td class="text-right text-purple">$ <?php echo number_format($salaire_brut, 2, ',', ' '); ?></td>
                         <td class="text-right text-red">
-                            <?php echo number_format($retenues_mois, 2, ',', ' '); ?>
+                            $ <?php echo number_format($retenues_mois, 2, ',', ' '); ?>
                             <?php if (!empty($liste_retenues)): ?>
                                 <div style="font-size:9px;color:#94a3b8;">
                                     <?php foreach ($liste_retenues as $rt): ?>
@@ -502,8 +549,8 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
                                 </div>
                             <?php endif; ?>
                         </td>
-                        <td class="text-right text-orange"><?php echo number_format($avances_agent, 2, ',', ' '); ?></td>
-                        <td class="text-right font-bold text-green"><?php echo number_format($salaire_net, 2, ',', ' '); ?></td>
+                        <td class="text-right text-yellow">$ <?php echo number_format($avances_agent, 2, ',', ' '); ?></td>
+                        <td class="text-right font-bold text-green">$ <?php echo number_format($salaire_net, 2, ',', ' '); ?></td>
                         <td class="text-center">
                             <span class="badge <?php echo $statut_badge; ?>">
                                 <i class="fas <?php echo $statut_icon; ?>"></i> <?php echo $statut; ?>
@@ -514,13 +561,13 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
                     
                     <!-- Ligne Total -->
                     <tr class="total-row">
-                        <td colspan="3" style="text-align:right;font-size:14px;">TOTAUX :</td>
-                        <td class="text-right"><?php echo number_format($grand_total_base, 2, ',', ' '); ?></td>
-                        <td class="text-right text-green"><?php echo number_format($grand_total_avantages, 2, ',', ' '); ?></td>
-                        <td class="text-right text-purple"><?php echo number_format($grand_total_brut, 2, ',', ' '); ?></td>
-                        <td class="text-right text-red"><?php echo number_format($grand_total_retenues, 2, ',', ' '); ?></td>
-                        <td class="text-right text-orange"><?php echo number_format($grand_total_avances, 2, ',', ' '); ?></td>
-                        <td class="text-right text-green" style="font-size:16px;"><?php echo number_format($grand_total_net, 2, ',', ' '); ?></td>
+                        <td colspan="4" style="text-align:right;font-size:14px;">TOTAUX :</td>
+                        <td class="text-right">$ <?php echo number_format($grand_total_base, 2, ',', ' '); ?></td>
+                        <td class="text-right text-green">$ <?php echo number_format($grand_total_avantages, 2, ',', ' '); ?></td>
+                        <td class="text-right text-purple">$ <?php echo number_format($grand_total_brut, 2, ',', ' '); ?></td>
+                        <td class="text-right text-red">$ <?php echo number_format($grand_total_retenues, 2, ',', ' '); ?></td>
+                        <td class="text-right text-yellow">$ <?php echo number_format($grand_total_avances, 2, ',', ' '); ?></td>
+                        <td class="text-right text-green" style="font-size:16px;">$ <?php echo number_format($grand_total_net, 2, ',', ' '); ?></td>
                         <td></td>
                     </tr>
                 </tbody>
@@ -539,10 +586,15 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
                             <?php echo $total_agents_avec_avances; ?> avec avances
                         </span>
                     <?php endif; ?>
+                    <?php if ($remunerations_sans_affectation > 0): ?>
+                        <span style="margin-left:8px;background:#fee2e2;padding:2px 10px;border-radius:4px;color:#991b1b;">
+                            <?php echo $remunerations_sans_affectation; ?> sans affectation
+                        </span>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="amount">
-                <?php echo number_format($grand_total_net, 2, ',', ' '); ?> $
+                $ <?php echo number_format($grand_total_net, 2, ',', ' '); ?>
             </div>
         </div>
 
@@ -550,22 +602,22 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:16px;background:#f8fafc;border-radius:8px;padding:16px 20px;border:1px solid #e2e8f0;">
             <div>
                 <div style="font-size:11px;color:#94a3b8;">Salaire Brut Total</div>
-                <div style="font-weight:700;color:#2563eb;"><?php echo number_format($grand_total_brut, 2, ',', ' '); ?> $</div>
+                <div style="font-weight:700;color:#2563eb;">$ <?php echo number_format($grand_total_brut, 2, ',', ' '); ?></div>
                 <div style="font-size:10px;color:#94a3b8;">Base + Avantages</div>
             </div>
             <div>
                 <div style="font-size:11px;color:#94a3b8;">Total Retenues</div>
-                <div style="font-weight:700;color:#dc2626;">- <?php echo number_format($grand_total_retenues, 2, ',', ' '); ?> $</div>
-                <div style="font-size:10px;color:#94a3b8;"><?php echo $total_remunerations > 0 ? number_format(($grand_total_retenues / $grand_total_brut) * 100, 1) : 0; ?>% du brut</div>
+                <div style="font-weight:700;color:#dc2626;">- $ <?php echo number_format($grand_total_retenues, 2, ',', ' '); ?></div>
+                <div style="font-size:10px;color:#94a3b8;"><?php echo $grand_total_brut > 0 ? number_format(($grand_total_retenues / $grand_total_brut) * 100, 1) : 0; ?>% du brut</div>
             </div>
             <div>
                 <div style="font-size:11px;color:#94a3b8;">Total Avances</div>
-                <div style="font-weight:700;color:#f97316;">- <?php echo number_format($grand_total_avances, 2, ',', ' '); ?> $</div>
+                <div style="font-weight:700;color:#f97316;">- $ <?php echo number_format($grand_total_avances, 2, ',', ' '); ?></div>
                 <div style="font-size:10px;color:#94a3b8;"><?php echo $total_agents_avec_avances; ?> agents concernés</div>
             </div>
             <div>
                 <div style="font-size:11px;color:#94a3b8;">= Salaire Net Total</div>
-                <div style="font-weight:700;color:#16a34a;font-size:20px;"><?php echo number_format($grand_total_net, 2, ',', ' '); ?> $</div>
+                <div style="font-weight:700;color:#16a34a;font-size:20px;">$ <?php echo number_format($grand_total_net, 2, ',', ' '); ?></div>
                 <div style="font-size:10px;color:#94a3b8;">À payer aux agents</div>
             </div>
         </div>
@@ -585,9 +637,9 @@ $username = $_SESSION['nom'] ?? $_SESSION['username'] ?? 'Utilisateur';
                 <i class="fas fa-hand-holding-usd"></i>
                 <span>Avances / Brut : <strong><?php echo $grand_total_brut > 0 ? number_format(($grand_total_avances / $grand_total_brut) * 100, 1) : 0; ?>%</strong></span>
             </div>
-            <div class="info-supp" style="background:#dbeafe;border-color:#93c5fd;color:#1e40af;">
+            <div class="info-supp blue">
                 <i class="fas fa-calculator"></i>
-                <span>Formule : Brut - Retenues - Avances = <strong><?php echo number_format($grand_total_net, 2, ',', ' '); ?> $</strong></span>
+                <span>Formule : Brut - Retenues - Avances = <strong>$ <?php echo number_format($grand_total_net, 2, ',', ' '); ?></strong></span>
             </div>
         </div>
         <?php endif; ?>

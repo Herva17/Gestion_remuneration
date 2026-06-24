@@ -21,6 +21,17 @@ $affectations = Affectation::getAll();
 $agents = Agent::getAll();
 $services = Service::getAll();
 
+// Calcul du nombre d'affectations avec montant
+$affectationsAvecMontant = 0;
+$totalMontant = 0;
+foreach ($affectations as $affectation) {
+    $montant = $affectation->getMontantRemunerer();
+    if ($montant !== null && $montant > 0) {
+        $affectationsAvecMontant++;
+        $totalMontant += $montant;
+    }
+}
+
 $message = '';
 $message_type = '';
 if (isset($_SESSION['message'])) {
@@ -76,11 +87,13 @@ $totalAffectations = count($affectations);
         .border-blue { border-left: 4px solid #2563eb; }
         .border-green { border-left: 4px solid #16a34a; }
         .border-orange { border-left: 4px solid #f97316; }
+        .border-red { border-left: 4px solid #dc2626; }
 
         .text-purple { color: #9333ea; }
         .text-blue { color: #2563eb; }
         .text-green { color: #16a34a; }
         .text-orange { color: #f97316; }
+        .text-red { color: #dc2626; }
 
         .table-wrap { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -106,6 +119,8 @@ $totalAffectations = count($affectations);
         .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
         .badge-green { background: #d1fae5; color: #065f46; }
         .badge-yellow { background: #fef3c7; color: #92400e; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gray { background: #e5e7eb; color: #4b5563; }
 
         .flex { display: flex; }
         .items-center { align-items: center; }
@@ -117,6 +132,9 @@ $totalAffectations = count($affectations);
         .mt-4 { margin-top: 16px; }
 
         .footer { text-align: center; margin-top: 20px; color: #999; font-size: 12px; padding: 10px 0; }
+
+        .montant-positive { color: #16a34a; font-weight: 600; }
+        .montant-zero { color: #6b7280; }
 
         @media (max-width: 768px) {
             .header { flex-direction: column; align-items: stretch; }
@@ -185,8 +203,12 @@ $totalAffectations = count($affectations);
             <div class="label"><i class="fas fa-cogs"></i> Services</div>
         </div>
         <div class="card border-orange">
-            <div class="number text-orange"></div>
+            <div class="number text-orange"><?php echo $affectationsAvecMontant; ?></div>
             <div class="label"><i class="fas fa-dollar-sign"></i> Avec montant</div>
+        </div>
+        <div class="card border-red">
+            <div class="number text-red"><?php echo number_format($totalMontant, 2, ',', ' '); ?> $</div>
+            <div class="label"><i class="fas fa-coins"></i> Montant total</div>
         </div>
     </div>
 
@@ -200,6 +222,7 @@ $totalAffectations = count($affectations);
                         <th>Agent</th>
                         <th>Service</th>
                         <th>Lieu</th>
+                        <th>Montant</th>
                         <th>Date</th>
                         <th>Actions</th>
                     </tr>
@@ -207,7 +230,7 @@ $totalAffectations = count($affectations);
                 <tbody>
                     <?php if (empty($affectations)): ?>
                     <tr>
-                        <td colspan="7" class="empty">
+                        <td colspan="8" class="empty">
                             <i class="fas fa-inbox"></i>
                             Aucune affectation trouvée
                         </td>
@@ -216,6 +239,7 @@ $totalAffectations = count($affectations);
                         <?php foreach ($affectations as $affectation): 
                             $agent = Agent::getById($affectation->getIdAgent());
                             $service = Service::getById($affectation->getIdService());
+                            $montant = $affectation->getMontantRemunerer();
                         ?>
                         <tr>
                             <td><?php echo $affectation->getId(); ?></td>
@@ -236,18 +260,28 @@ $totalAffectations = count($affectations);
                                 </div>
                             </td>
                             <td>
-                                <span style="background:#dbeafe;color:#2563eb;padding:2px 10px;border-radius:12px;font-size:12px;">
+                                <span class="badge badge-blue">
                                     <?php echo $service ? htmlspecialchars($service->getDesignation()) : 'N/A'; ?>
                                 </span>
                             </td>
                             <td><?php echo htmlspecialchars($affectation->getLieuAffectation() ?: '-'); ?></td>
+                            <td>
+                                <?php if ($montant !== null && $montant > 0): ?>
+                                    <span class="montant-positive">
+                                        <?php echo number_format($montant, 2, ',', ' '); ?> $
+                                    </span>
+                                <?php elseif ($montant !== null && $montant == 0): ?>
+                                    <span class="montant-zero">0 $</span>
+                                <?php else: ?>
+                                    <span class="badge badge-gray">Non défini</span>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <?php 
                                 $date = $affectation->getDateAffectation();
                                 echo $date ? date('d/m/Y', strtotime($date)) : '<span style="color:#999;">Non définie</span>'; 
                                 ?>
                             </td>
-                            
                             <td>
                                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
                                     <a href="edit.php?id=<?php echo $affectation->getId(); ?>" 

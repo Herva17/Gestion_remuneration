@@ -548,7 +548,7 @@ $montantEnLettres = nombreEnLettres($salaireNetApresAvances);
 
     <!-- Informations Entreprise -->
     <div class="info-entreprise">
-        <div class="nom">🏢 Gestion Rémunération SARL</div>
+        <div class="nom">🏢 COMPLEXE SCOLAIRE MAMAN MAPENDO</div>
         <div class="details">
             <i class="fas fa-map-marker-alt"></i> 123 Avenue de la République, Kinshasa, RDC &nbsp;|&nbsp;
             <i class="fas fa-phone"></i> +243 82 123 4567 &nbsp;|&nbsp;

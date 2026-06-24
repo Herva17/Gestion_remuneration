@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../../Config/Database.php';
 require_once __DIR__ . '/../../Classes/Remuneration.php';
 require_once __DIR__ . '/../../Classes/Agent.php';
+require_once __DIR__ . '/../../Classes/Affectation.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../../index.php');
@@ -33,8 +34,17 @@ $totalRemunerations = count($remunerations);
 
 // Calcul des statistiques
 $totalMontant = 0;
+$totalMontantAvecAffectation = 0;
+$remunerationsSansAffectation = 0;
+
 foreach ($remunerations as $remuneration) {
-    $totalMontant += $remuneration->getMontant();
+    $montant = $remuneration->getMontant();
+    if ($montant !== null) {
+        $totalMontant += $montant;
+        $totalMontantAvecAffectation++;
+    } else {
+        $remunerationsSansAffectation++;
+    }
 }
 
 // Mois actuel pour le filtre
@@ -80,7 +90,7 @@ if (isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'cai
         .top h2 { color: #1f2937; font-size: 22px; }
         .top p { color: #6b7280; font-size: 14px; }
 
-        .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .grid-5 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
 
         .card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .card .number { font-size: 24px; font-weight: bold; }
@@ -90,13 +100,13 @@ if (isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'cai
         .border-green { border-left: 4px solid #16a34a; }
         .border-blue { border-left: 4px solid #2563eb; }
         .border-orange { border-left: 4px solid #f97316; }
-        .border-red { border-left: 4px solid #dc2626; }
+        .border-yellow { border-left: 4px solid #eab308; }
 
         .text-purple { color: #9333ea; }
         .text-green { color: #16a34a; }
         .text-blue { color: #2563eb; }
         .text-orange { color: #f97316; }
-        .text-red { color: #dc2626; }
+        .text-yellow { color: #eab308; }
 
         .table-wrap { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -122,15 +132,20 @@ if (isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'cai
         .btn-pink:hover { background: #db2777; }
         .btn-secondary { background: #e5e7eb; color: #374151; }
         .btn-secondary:hover { background: #d1d5db; }
+        .btn-yellow { background: #eab308; color: white; }
+        .btn-yellow:hover { background: #ca8a04; }
 
         .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
         .alert-success { background: #d1fae5; border: 1px solid #a7f3d0; color: #065f46; }
         .alert-danger { background: #fee2e2; border: 1px solid #fecaca; color: #991b1b; }
+        .alert-warning { background: #fef3c7; border: 1px solid #fde68a; color: #92400e; }
 
         .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
         .badge-green { background: #d1fae5; color: #065f46; }
         .badge-blue { background: #dbeafe; color: #2563eb; }
         .badge-yellow { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fee2e2; color: #991b1b; }
+        .badge-gray { background: #e5e7eb; color: #4b5563; }
 
         .flex { display: flex; }
         .items-center { align-items: center; }
@@ -167,13 +182,30 @@ if (isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'cai
         .action-icons .view:hover { background: #dbeafe; }
         .action-icons .pay { color: #ec4899; }
         .action-icons .pay:hover { background: #fce7f3; }
+        .action-icons .link { color: #16a34a; }
+        .action-icons .link:hover { background: #d1fae5; }
+
+        .montant-non-defini { color: #999; font-style: italic; font-weight: normal; }
+        .montant-positif { color: #16a34a; font-weight: 600; }
+
+        .info-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 8px 14px;
+            font-size: 13px;
+            color: #1e40af;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
 
         @media (max-width: 768px) {
             .header { flex-direction: column; align-items: stretch; }
             .header-left { flex-direction: column; align-items: stretch; }
             .nav-links { justify-content: center; }
             .header-right { justify-content: center; }
-            .grid-4 { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+            .grid-5 { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
             .btn-group { flex-direction: column; width: 100%; }
             .btn-group .btn { justify-content: center; }
             .top { flex-direction: column; align-items: stretch; }
@@ -237,7 +269,7 @@ if (isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'cai
     <div class="top">
         <div>
             <h2>Gestion des Rémunérations</h2>
-            <p>Gérez les rémunérations des agents</p>
+            <p>Gérez les rémunérations des agents basées sur leurs affectations</p>
         </div>
         <div class="flex gap-3 flex-wrap">
             <a href="add.php" class="btn btn-success"><i class="fas fa-plus"></i> Ajouter</a>
@@ -276,23 +308,34 @@ if (isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'cai
     </div>
     <?php endif; ?>
 
+    <?php if ($remunerationsSansAffectation > 0): ?>
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>Attention :</strong> <?php echo $remunerationsSansAffectation; ?> rémunération(s) n'ont pas d'affectation associée. Le montant ne peut pas être calculé.
+    </div>
+    <?php endif; ?>
+
     <!-- Statistiques -->
-    <div class="grid-4">
+    <div class="grid-5">
         <div class="card border-purple">
             <div class="number text-purple"><?php echo $totalRemunerations; ?></div>
             <div class="label"><i class="fas fa-money-bill-wave"></i> Total Rémunérations</div>
         </div>
         <div class="card border-green">
-            <div class="number text-green"><?php echo number_format($totalMontant, 2, ',', ' '); ?> $</div>
+            <div class="number text-green">$ <?php echo number_format($totalMontant, 2, ',', ' '); ?></div>
             <div class="label"><i class="fas fa-dollar-sign"></i> Montant Total</div>
         </div>
         <div class="card border-blue">
-            <div class="number text-blue"><?php echo $totalRemunerations > 0 ? number_format($totalMontant / $totalRemunerations, 2, ',', ' ') : '0,00'; ?> $</div>
+            <div class="number text-blue">$ <?php echo $totalRemunerations > 0 ? number_format($totalMontant / $totalRemunerations, 2, ',', ' ') : '0,00'; ?></div>
             <div class="label"><i class="fas fa-chart-bar"></i> Moyenne</div>
         </div>
         <div class="card border-orange">
-            <div class="number text-orange"><?php echo number_format($totalMois, 2, ',', ' '); ?> $</div>
+            <div class="number text-orange">$ <?php echo number_format($totalMois, 2, ',', ' '); ?></div>
             <div class="label"><i class="fas fa-calendar-alt"></i> <?php echo $moisActuel . ' ' . $anneeActuelle; ?></div>
+        </div>
+        <div class="card border-yellow">
+            <div class="number text-yellow"><?php echo $totalMontantAvecAffectation; ?></div>
+            <div class="label"><i class="fas fa-link"></i> Avec affectation</div>
         </div>
     </div>
 
@@ -304,6 +347,7 @@ if (isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'cai
                     <tr>
                         <th>ID</th>
                         <th>Agent</th>
+                        <th>Affectation</th>
                         <th>Montant</th>
                         <th>Mois</th>
                         <th>Année</th>
@@ -314,7 +358,7 @@ if (isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'cai
                 <tbody>
                     <?php if (empty($remunerations)): ?>
                     <tr>
-                        <td colspan="7" class="empty">
+                        <td colspan="8" class="empty">
                             <i class="fas fa-inbox"></i>
                             Aucune rémunération trouvée
                         </td>
@@ -322,18 +366,20 @@ if (isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'cai
                     <?php else: ?>
                         <?php foreach ($remunerations as $remuneration): 
                             $agent = $remuneration->getAgent();
+                            $affectation = $remuneration->getAffectation();
+                            $montant = $remuneration->getMontant();
+                            
                             $agentId = 0;
                             if ($agent) {
                                 if (method_exists($agent, 'getIdAgent')) {
                                     $agentId = $agent->getIdAgent();
                                 } elseif (method_exists($agent, 'getId')) {
                                     $agentId = $agent->getId();
-                                } elseif (method_exists($agent, 'getAgentId')) {
-                                    $agentId = $agent->getAgentId();
-                                } elseif (method_exists($agent, 'getID')) {
-                                    $agentId = $agent->getID();
                                 }
                             }
+                            
+                            $affectationLieu = $affectation ? $affectation->getLieuAffectation() : null;
+                            $affectationId = $affectation ? $affectation->getId() : null;
                         ?>
                         <tr>
                             <td><?php echo $remuneration->getId(); ?></td>
@@ -353,8 +399,26 @@ if (isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'cai
                                     <?php echo $agent ? htmlspecialchars($agent->getNomComplet()) : '<span style="color:#999;">Agent inconnu</span>'; ?>
                                 </div>
                             </td>
-                            <td class="text-green" style="font-weight:bold;">
-                                <?php echo number_format($remuneration->getMontant(), 2, ',', ' '); ?> $
+                            <td>
+                                <?php if ($affectation): ?>
+                                    <div style="display:flex;align-items:center;gap:6px;">
+                                        <span class="badge badge-blue">#<?php echo $affectationId; ?></span>
+                                        <span style="font-size:12px;color:#4b5563;"><?php echo htmlspecialchars($affectationLieu ?: 'Non spécifié'); ?></span>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="badge badge-red"><i class="fas fa-exclamation-triangle"></i> Non définie</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($montant !== null && $montant > 0): ?>
+                                    <span class="montant-positif">
+                                        $ <?php echo number_format($montant, 2, ',', ' '); ?>
+                                    </span>
+                                <?php elseif ($montant !== null && $montant == 0): ?>
+                                    <span class="montant-non-defini">$ 0,00</span>
+                                <?php else: ?>
+                                    <span class="badge badge-gray"><i class="fas fa-minus"></i> Non défini</span>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <span class="badge badge-blue">
@@ -382,6 +446,11 @@ if (isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'cai
                                     <?php if ($agentId > 0): ?>
                                     <a href="fiche_paie.php?id=<?php echo $remuneration->getId(); ?>&agent_id=<?php echo $agentId; ?>" class="pay" title="Fiche de paie" target="_blank">
                                         <i class="fas fa-file-invoice"></i>
+                                    </a>
+                                    <?php endif; ?>
+                                    <?php if ($affectationId): ?>
+                                    <a href="../affectations/view.php?id=<?php echo $affectationId; ?>" class="link" title="Voir l'affectation" target="_blank">
+                                        <i class="fas fa-link"></i>
                                     </a>
                                     <?php endif; ?>
                                 </div>

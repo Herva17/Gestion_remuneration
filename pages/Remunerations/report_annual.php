@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../../Config/Database.php';
 require_once __DIR__ . '/../../Classes/Remuneration.php';
 require_once __DIR__ . '/../../Classes/Agent.php';
+require_once __DIR__ . '/../../Classes/Affectation.php';
 require_once __DIR__ . '/../../Classes/avantages.php';
 require_once __DIR__ . '/../../Classes/Retenue.php';
 require_once __DIR__ . '/../../Classes/Avance.php';
@@ -42,9 +43,12 @@ $sql = "SELECT r.*,
                a.adresse as agent_adresse,
                a.telephone as agent_telephone,
                a.fonction as agent_fonction,
-               a.profil as agent_profil
+               a.profil as agent_profil,
+               aff.lieu_affectation,
+               aff.montant_remunerer as montant_affectation
         FROM remuneration r
         LEFT JOIN agent a ON r.id_agent = a.id_agent
+        LEFT JOIN affectation aff ON r.id_affectation = aff.id
         WHERE r.mois = :mois AND r.annee = :annee";
 
 $params = [':mois' => $mois, ':annee' => $annee];
@@ -63,7 +67,7 @@ foreach ($params as $key => $value) {
 $stmt->execute();
 $remunerations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// INITIALISATION DES VARIABLES AVANT LA BOUCLE
+// INITIALISATION DES VARIABLES
 $total_remunerations = count($remunerations);
 $total_montant_brut = 0;
 $total_avantages = 0;
@@ -79,6 +83,9 @@ $total_brut_calc = 0;
 $total_retenues_calc = 0;
 $total_avances_calc = 0;
 $total_net_calc = 0;
+
+// Compteur de rémunérations sans affectation
+$remuneration_sans_affectation = 0;
 
 foreach ($remunerations as $r) {
     $id_agent = $r['id_agent'];
@@ -103,7 +110,14 @@ foreach ($remunerations as $r) {
         }
         $total_avances += $total_avances_agent;
         
-        $montant_brut = $r['montant'] + $avantages_mois;
+        // Récupérer le montant depuis l'affectation
+        $montant_base = $remun->getMontant();
+        if ($montant_base === null) {
+            $montant_base = 0;
+            $remuneration_sans_affectation++;
+        }
+        
+        $montant_brut = $montant_base + $avantages_mois;
         $montant_net = $montant_brut - $retenues_mois - $total_avances_agent;
         if ($montant_net < 0) $montant_net = 0;
         
@@ -111,7 +125,7 @@ foreach ($remunerations as $r) {
         $total_net += $montant_net;
         
         // Ajouter aux totaux du tableau
-        $total_base += $r['montant'];
+        $total_base += $montant_base;
         $total_avantages_calc += $avantages_mois;
         $total_brut_calc += $montant_brut;
         $total_retenues_calc += $retenues_mois;
@@ -242,6 +256,7 @@ $anneeScolaireLibelle = $anneeCourante ? $anneeCourante->getDesignationAnn() : '
         .text-red { color: #dc2626; }
         .text-orange { color: #f97316; }
         .text-purple { color: #8b5cf6; }
+        .text-yellow { color: #eab308; }
 
         .table-wrap { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -356,6 +371,20 @@ $anneeScolaireLibelle = $anneeCourante ? $anneeCourante->getDesignationAnn() : '
             align-items: center;
             gap: 8px;
         }
+        
+        .alert-warning {
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+            color: #92400e;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+        .alert-warning i { font-size: 18px; }
 
         @media print {
             body { background: white; padding: 0; }
@@ -369,6 +398,7 @@ $anneeScolaireLibelle = $anneeCourante ? $anneeCourante->getDesignationAnn() : '
             .recap-paiement { background: #f0fdf4 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             th { background: #f1f5f9 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .total-row td { background: #eff6ff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .alert-warning { background: #fef3c7 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
 
         @media (max-width: 768px) {
@@ -454,6 +484,17 @@ $anneeScolaireLibelle = $anneeCourante ? $anneeCourante->getDesignationAnn() : '
         </form>
     </div>
 
+    <!-- Alerte pour les rémunérations sans affectation -->
+    <?php if ($remuneration_sans_affectation > 0): ?>
+    <div class="alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+            <strong>Attention :</strong> <?php echo $remuneration_sans_affectation; ?> rémunération(s) n'ont pas d'affectation associée. 
+            Le montant de base est considéré comme 0 $.
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Statistiques -->
     <div class="stats-grid">
         <div class="stat-card">
@@ -462,29 +503,29 @@ $anneeScolaireLibelle = $anneeCourante ? $anneeCourante->getDesignationAnn() : '
             <div class="sub"><?php echo $total_agents; ?> agents concernés</div>
         </div>
         <div class="stat-card">
-            <div class="value text-purple"><?php echo number_format($total_montant_brut, 2, ',', ' '); ?> $</div>
+            <div class="value text-purple">$ <?php echo number_format($total_montant_brut, 2, ',', ' '); ?></div>
             <div class="label">Salaire Brut Total</div>
-            <div class="sub">Moyenne : <?php echo number_format($moyenne_brut, 2, ',', ' '); ?> $</div>
+            <div class="sub">Moyenne : $ <?php echo number_format($moyenne_brut, 2, ',', ' '); ?></div>
         </div>
         <div class="stat-card">
-            <div class="value text-orange"><?php echo number_format($total_avantages, 2, ',', ' '); ?> $</div>
+            <div class="value text-orange">$ <?php echo number_format($total_avantages, 2, ',', ' '); ?></div>
             <div class="label">Total Avantages</div>
             <div class="sub">Avantages accordés</div>
         </div>
         <div class="stat-card">
-            <div class="value text-red"><?php echo number_format($total_retenues, 2, ',', ' '); ?> $</div>
+            <div class="value text-red">$ <?php echo number_format($total_retenues, 2, ',', ' '); ?></div>
             <div class="label">Total Retenues</div>
             <div class="sub">Retenues effectuées</div>
         </div>
         <div class="stat-card">
-            <div class="value text-orange"><?php echo number_format($total_avances, 2, ',', ' '); ?> $</div>
+            <div class="value text-yellow">$ <?php echo number_format($total_avances, 2, ',', ' '); ?></div>
             <div class="label">Total Avances</div>
             <div class="sub">Avances en cours</div>
         </div>
         <div class="stat-card" style="border-color:#16a34a;background:#f0fdf4;">
-            <div class="value text-green"><?php echo number_format($total_net, 2, ',', ' '); ?> $</div>
+            <div class="value text-green">$ <?php echo number_format($total_net, 2, ',', ' '); ?></div>
             <div class="label">Salaire Net Total</div>
-            <div class="sub">Moyenne : <?php echo number_format($moyenne_net, 2, ',', ' '); ?> $</div>
+            <div class="sub">Moyenne : $ <?php echo number_format($moyenne_net, 2, ',', ' '); ?></div>
         </div>
     </div>
 
@@ -496,6 +537,7 @@ $anneeScolaireLibelle = $anneeCourante ? $anneeCourante->getDesignationAnn() : '
                     <th>#</th>
                     <th>Agent</th>
                     <th>Fonction</th>
+                    <th>Affectation</th>
                     <th>Salaire Base</th>
                     <th>Avantages</th>
                     <th>Brut</th>
@@ -508,7 +550,7 @@ $anneeScolaireLibelle = $anneeCourante ? $anneeCourante->getDesignationAnn() : '
             <tbody>
                 <?php if (empty($remunerations)): ?>
                     <tr>
-                        <td colspan="10" style="text-align:center;padding:40px;color:#94a3b8;">
+                        <td colspan="11" style="text-align:center;padding:40px;color:#94a3b8;">
                             <i class="fas fa-inbox" style="font-size:24px;display:block;margin-bottom:8px;"></i>
                             Aucune rémunération trouvée pour cette période
                         </td>
@@ -534,9 +576,12 @@ $anneeScolaireLibelle = $anneeCourante ? $anneeCourante->getDesignationAnn() : '
                         $retenues_mois = 0;
                         $avances_agent = 0;
                         
+                        // Récupérer le montant depuis l'affectation
+                        $salaire_base = 0;
                         if ($remun) {
                             $avantages_mois = $remun->getTotalAvantages();
                             $retenues_mois = $remun->getTotalRetenues();
+                            $salaire_base = $remun->getMontant() ?? 0;
                             
                             // Récupérer les avances
                             $avances = Avance::getAvancesEnCours($id_agent);
@@ -545,7 +590,6 @@ $anneeScolaireLibelle = $anneeCourante ? $anneeCourante->getDesignationAnn() : '
                             }
                         }
                         
-                        $salaire_base = $r['montant'];
                         $salaire_brut = $salaire_base + $avantages_mois;
                         $salaire_net = $salaire_brut - $retenues_mois - $avances_agent;
                         if ($salaire_net < 0) $salaire_net = 0;
@@ -565,6 +609,9 @@ $anneeScolaireLibelle = $anneeCourante ? $anneeCourante->getDesignationAnn() : '
                             $initials .= strtoupper(substr($part, 0, 1));
                         }
                         $initials = substr($initials, 0, 2);
+                        
+                        // Lieu d'affectation
+                        $lieu_affectation = $r['lieu_affectation'] ?? 'Non définie';
                     ?>
                         <tr>
                             <td><?php echo $compteur; ?></td>
@@ -575,12 +622,23 @@ $anneeScolaireLibelle = $anneeCourante ? $anneeCourante->getDesignationAnn() : '
                                 </div>
                             </td>
                             <td><?php echo htmlspecialchars($r['agent_fonction'] ?? '-'); ?></td>
-                            <td class="text-right"><?php echo number_format($salaire_base, 2, ',', ' '); ?></td>
-                            <td class="text-right text-green"><?php echo number_format($avantages_mois, 2, ',', ' '); ?></td>
-                            <td class="text-right text-purple"><?php echo number_format($salaire_brut, 2, ',', ' '); ?></td>
-                            <td class="text-right text-red"><?php echo number_format($retenues_mois, 2, ',', ' '); ?></td>
-                            <td class="text-right text-orange"><?php echo number_format($avances_agent, 2, ',', ' '); ?></td>
-                            <td class="text-right font-bold text-green"><?php echo number_format($salaire_net, 2, ',', ' '); ?></td>
+                            <td>
+                                <span class="badge badge-blue">
+                                    <?php echo htmlspecialchars($lieu_affectation); ?>
+                                </span>
+                            </td>
+                            <td class="text-right">
+                                <?php if ($salaire_base > 0): ?>
+                                    $ <?php echo number_format($salaire_base, 2, ',', ' '); ?>
+                                <?php else: ?>
+                                    <span class="badge badge-gray">0,00 $</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-right text-green">$ <?php echo number_format($avantages_mois, 2, ',', ' '); ?></td>
+                            <td class="text-right text-purple">$ <?php echo number_format($salaire_brut, 2, ',', ' '); ?></td>
+                            <td class="text-right text-red">$ <?php echo number_format($retenues_mois, 2, ',', ' '); ?></td>
+                            <td class="text-right text-yellow">$ <?php echo number_format($avances_agent, 2, ',', ' '); ?></td>
+                            <td class="text-right font-bold text-green">$ <?php echo number_format($salaire_net, 2, ',', ' '); ?></td>
                             <td class="text-center">
                                 <?php if ($salaire_net > 0): ?>
                                     <span class="badge badge-green"><i class="fas fa-check-circle"></i> Payé</span>
@@ -592,13 +650,13 @@ $anneeScolaireLibelle = $anneeCourante ? $anneeCourante->getDesignationAnn() : '
                     <?php endforeach; ?>
                     <!-- Ligne Total -->
                     <tr class="total-row">
-                        <td colspan="3" style="text-align:right;font-size:14px;">TOTAUX :</td>
-                        <td class="text-right"><?php echo number_format($total_base, 2, ',', ' '); ?></td>
-                        <td class="text-right text-green"><?php echo number_format($total_avantages_calc, 2, ',', ' '); ?></td>
-                        <td class="text-right text-purple"><?php echo number_format($total_brut_calc, 2, ',', ' '); ?></td>
-                        <td class="text-right text-red"><?php echo number_format($total_retenues_calc, 2, ',', ' '); ?></td>
-                        <td class="text-right text-orange"><?php echo number_format($total_avances_calc, 2, ',', ' '); ?></td>
-                        <td class="text-right text-green" style="font-size:15px;"><?php echo number_format($total_net_calc, 2, ',', ' '); ?></td>
+                        <td colspan="4" style="text-align:right;font-size:14px;">TOTAUX :</td>
+                        <td class="text-right">$ <?php echo number_format($total_base, 2, ',', ' '); ?></td>
+                        <td class="text-right text-green">$ <?php echo number_format($total_avantages_calc, 2, ',', ' '); ?></td>
+                        <td class="text-right text-purple">$ <?php echo number_format($total_brut_calc, 2, ',', ' '); ?></td>
+                        <td class="text-right text-red">$ <?php echo number_format($total_retenues_calc, 2, ',', ' '); ?></td>
+                        <td class="text-right text-yellow">$ <?php echo number_format($total_avances_calc, 2, ',', ' '); ?></td>
+                        <td class="text-right text-green" style="font-size:15px;">$ <?php echo number_format($total_net_calc, 2, ',', ' '); ?></td>
                         <td></td>
                     </tr>
                 <?php endif; ?>
@@ -616,7 +674,7 @@ $anneeScolaireLibelle = $anneeCourante ? $anneeCourante->getDesignationAnn() : '
             </div>
         </div>
         <div class="amount">
-            <?php echo number_format($total_net_calc, 2, ',', ' '); ?> $
+            $ <?php echo number_format($total_net_calc, 2, ',', ' '); ?>
         </div>
     </div>
 
@@ -624,19 +682,19 @@ $anneeScolaireLibelle = $anneeCourante ? $anneeCourante->getDesignationAnn() : '
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:16px;background:#f8fafc;border-radius:8px;padding:16px 20px;border:1px solid #e2e8f0;">
         <div>
             <div style="font-size:11px;color:#94a3b8;">Salaire Brut Total</div>
-            <div style="font-weight:700;color:#2563eb;"><?php echo number_format($total_brut_calc, 2, ',', ' '); ?> $</div>
+            <div style="font-weight:700;color:#2563eb;">$ <?php echo number_format($total_brut_calc, 2, ',', ' '); ?></div>
         </div>
         <div>
             <div style="font-size:11px;color:#94a3b8;">Total Retenues</div>
-            <div style="font-weight:700;color:#dc2626;">- <?php echo number_format($total_retenues_calc, 2, ',', ' '); ?> $</div>
+            <div style="font-weight:700;color:#dc2626;">- $ <?php echo number_format($total_retenues_calc, 2, ',', ' '); ?></div>
         </div>
         <div>
             <div style="font-size:11px;color:#94a3b8;">Total Avances</div>
-            <div style="font-weight:700;color:#f97316;">- <?php echo number_format($total_avances_calc, 2, ',', ' '); ?> $</div>
+            <div style="font-weight:700;color:#f97316;">- $ <?php echo number_format($total_avances_calc, 2, ',', ' '); ?></div>
         </div>
         <div>
             <div style="font-size:11px;color:#94a3b8;">= Salaire Net Total</div>
-            <div style="font-weight:700;color:#16a34a;font-size:18px;"><?php echo number_format($total_net_calc, 2, ',', ' '); ?> $</div>
+            <div style="font-weight:700;color:#16a34a;font-size:18px;">$ <?php echo number_format($total_net_calc, 2, ',', ' '); ?></div>
         </div>
     </div>
 
